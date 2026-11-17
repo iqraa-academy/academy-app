@@ -1,0 +1,2708 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<meta name="theme-color" content="#0d6e6e">
+<title>بوابة السنتر — حسابات</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--primary:#0d6e6e;--primary-dark:#0a5555;--primary-light:#e6f5f5;--success:#198754;--danger:#dc3545;--warn:#e0a800;--bg:#f0f4f8;--card:#fff;--text:#1a2b3c;--muted:#6c7a89;--border:#d8e2ec}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Tahoma,"Segoe UI",Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.5}
+button,input,select,textarea{font-family:inherit;font-size:14px}
+.hide{display:none!important}
+#loginScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:linear-gradient(160deg,#0d6e6e,#0a4a4a,#062f2f)}
+.login-box{width:100%;max-width:400px;background:#fff;border-radius:20px;padding:28px 24px;box-shadow:0 20px 50px rgba(0,0,0,.25);position:relative}
+.login-box::before{content:"";position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,#0d6e6e,#c9a227,#198754)}
+.login-title{font-size:20px;font-weight:bold;color:var(--primary);text-align:center;margin-bottom:6px}
+.login-sub{text-align:center;font-size:13px;color:var(--muted);margin-bottom:18px}
+.field{margin-bottom:12px}
+.field label,.form-group label{display:block;font-size:13px;font-weight:bold;color:var(--primary-dark);margin-bottom:5px}
+.field input,.form-group input,.form-group select,.form-group textarea{width:100%;padding:12px 14px;border:1.5px solid #c5d4de;border-radius:12px;min-height:44px;background:#fff}
+.field input:focus,.form-group input:focus,.form-group select:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(13,110,110,.12)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:11px 16px;border:none;border-radius:10px;font-weight:bold;cursor:pointer;width:100%}
+.btn-primary{background:linear-gradient(135deg,#0d6e6e,#0f8a8a);color:#fff}
+.btn-success{background:var(--success);color:#fff}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-outline{background:#fff;color:var(--primary);border:1.5px solid var(--primary)}
+.btn-sm{padding:8px 12px;font-size:12px;width:auto}
+.login-footer{text-align:center;margin-top:16px;font-size:11px;color:#888;line-height:1.7}
+#appShell{display:none;min-height:100vh;padding-bottom:70px}
+#appShell.active{display:block}
+.topbar{position:sticky;top:0;z-index:100;background:var(--primary);color:#fff;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;min-height:56px;box-shadow:0 2px 12px rgba(0,0,0,.15)}
+.topbar-right{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
+.menu-btn{width:38px;height:38px;border-radius:10px;background:rgba(255,255,255,.18);border:none;color:#fff;font-size:20px;cursor:pointer}
+.topbar-title{font-size:15px;font-weight:bold}
+.topbar-sub{font-size:11px;opacity:.9}
+.exit-btn{width:38px;height:38px;border-radius:50%;background:#d9534f;border:none;color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.drawer{position:fixed;top:0;right:-280px;width:280px;height:100%;background:#fff;z-index:950;transition:right .25s;box-shadow:-4px 0 20px rgba(0,0,0,.15);display:flex;flex-direction:column}
+.drawer.open{right:0}
+.drawer-header{background:var(--primary);color:#fff;padding:20px 16px}
+.drawer-user{font-weight:bold;font-size:16px}
+.drawer-role{font-size:12px;opacity:.9;margin-top:4px}
+.drawer-nav{flex:1;overflow-y:auto;padding:10px 0}
+.nav-section{padding:10px 16px 4px;font-size:11px;color:var(--muted);font-weight:bold}
+.nav-item{display:flex;align-items:center;gap:10px;width:100%;padding:12px 16px;border:none;background:transparent;text-align:right;cursor:pointer;font-size:14px;color:var(--text)}
+.nav-item:hover,.nav-item.active{background:var(--primary-light);color:var(--primary)}
+.drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:940;opacity:0;pointer-events:none;transition:opacity .25s}
+.drawer-overlay.show{opacity:1;pointer-events:auto}
+.main{padding:14px 12px 90px;max-width:900px;margin:0 auto}
+.page-header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px}
+.page-header h2{font-size:18px;color:var(--primary-dark)}
+.stats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px}
+@media(min-width:640px){.stats-grid{grid-template-columns:repeat(3,1fr)}}
+.stat-card{background:var(--card);border-radius:14px;padding:14px;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+.stat-card .stat-num{font-size:22px;font-weight:bold;color:var(--primary)}
+.stat-card .stat-label{font-size:12px;color:var(--muted);margin-top:4px}
+.stat-card.success .stat-num{color:var(--success)}
+.stat-card.danger .stat-num{color:var(--danger)}
+.stat-card.warn .stat-num{color:#b8860b}
+.card{background:var(--card);border-radius:14px;padding:14px;margin-bottom:12px;border:1px solid var(--border)}
+.card-title{font-weight:bold;color:var(--primary);margin-bottom:10px;font-size:14px}
+.list-item{background:#fff;border-radius:12px;padding:12px;margin-bottom:8px;border-right:4px solid var(--primary);display:flex;gap:10px;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.list-item.due{border-right-color:var(--danger);background:#fff5f5}
+.list-item.partial{border-right-color:var(--warn);background:#fffbf0}
+.list-item.ok{border-right-color:var(--success)}
+.list-item.closed{opacity:.7;border-right-color:#999}
+.item-title{font-weight:bold;font-size:14px}
+.item-meta{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.65}
+.item-actions{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;background:var(--primary-light);color:var(--primary)}
+.chip.green{background:#d1e7dd;color:#0f5132}
+.chip.red{background:#f8d7da;color:#842029}
+.chip.yellow{background:#fff3cd;color:#664d03}
+.form-group{margin-bottom:10px}
+.form-grid{display:grid;gap:10px}
+@media(min-width:560px){.form-grid.two{grid-template-columns:1fr 1fr}}
+.check-row{display:flex;align-items:center;gap:8px;padding:10px;background:#f8fafb;border-radius:10px;cursor:pointer}
+.check-row input{width:18px;height:18px}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:flex-end;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:#fff;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;border-radius:16px 16px 0 0;padding:16px}
+@media(min-width:560px){.modal-overlay{align-items:center;padding:16px}.modal{border-radius:16px}}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.modal-header h3{font-size:16px;color:var(--primary)}
+.modal-close{background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted)}
+.modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:2000;background:#333;color:#fff;padding:10px 18px;border-radius:10px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .25s;max-width:90%}
+.toast.show{opacity:1}
+.toast.ok{background:var(--success)}
+.toast.err{background:var(--danger)}
+#loadingOverlay{display:none;position:fixed;inset:0;background:rgba(255,255,255,.7);z-index:1500;align-items:center;justify-content:center;flex-direction:column;gap:10px}
+#loadingOverlay.show{display:flex}
+.spinner{width:36px;height:36px;border:3px solid #ddd;border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.bottom-back{position:fixed;bottom:0;left:0;right:0;z-index:90;background:#fff;border-top:1px solid var(--border);padding:10px 16px;display:none;justify-content:center;box-shadow:0 -2px 10px rgba(0,0,0,.06)}
+.bottom-back.show{display:flex}
+.bottom-back .btn{width:auto;min-width:180px;background:#6c757d;color:#fff}
+.empty-state{text-align:center;padding:30px 16px;color:var(--muted)}
+.search-bar{margin-bottom:12px}
+.search-bar input{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:12px}
+.cycle-row{padding:10px;border-radius:10px;margin-bottom:8px;border:1px solid var(--border);background:#fafbfc;cursor:pointer}
+.cycle-row.due{background:#fff5f5;border-color:#f5c2c7}
+.cycle-row.closed{background:#f1f3f5;opacity:.85}
+.cycle-row .cycle-body{display:none;margin-top:10px;padding-top:10px;border-top:1px dashed var(--border)}
+.cycle-row.open .cycle-body{display:block}
+.cycle-row .expand-hint{font-size:11px;color:var(--muted)}
+.sess-day{font-size:12px;padding:6px 8px;background:#fff;border-radius:8px;margin-bottom:4px;border:1px solid var(--border)}
+.list-item.foldable{cursor:pointer}
+.list-item .fold-body{display:none;margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);width:100%}
+.list-item.open .fold-body{display:block}
+.pull-hint{text-align:center;font-size:12px;color:var(--muted);padding:6px 0;opacity:0;transition:opacity .2s}
+.pull-hint.show{opacity:1}
+.filter-tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.filter-tabs .stat-card{cursor:pointer;flex:1;min-width:90px;transition:box-shadow .15s}
+.filter-tabs .stat-card.active-filter{box-shadow:0 0 0 2px var(--primary);background:var(--primary-light)}
+.session-search-item{padding:10px;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;cursor:pointer;background:#fff}
+.session-search-item:hover{background:var(--primary-light)}
+</style>
+</head>
+<body>
+<div id="loginScreen">
+  <div class="login-box">
+    <img id="loginLogo" alt="" style="display:none;height:56px;width:56px;border-radius:14px;object-fit:cover;margin:0 auto 10px">
+    <div class="login-title">بوابة السنتر</div>
+    <div class="login-sub">حسابات الطلاب والمعلمين · تسجيل الجلسات</div>
+    <div class="field"><label>الموبايل أو البريد</label><input id="loginPhone" autocomplete="username"></div>
+    <div class="field"><label>كلمة المرور</label><input id="loginPass" type="password" autocomplete="current-password"></div>
+    <div style="text-align:left;margin:-4px 0 12px;">
+      <button type="button" id="forgotBtn" onclick="doForgotPassword()" style="background:none;border:none;color:#0d6e6e;font-size:13px;font-weight:bold;cursor:pointer;padding:4px 0;text-decoration:underline;">نسيت كلمة المرور؟</button>
+    </div>
+    <button class="btn btn-primary" id="loginBtn" onclick="doLogin()">دخول</button>
+    <div class="login-footer">إعداد وتنفيذ: أ/ محمد فوزي<br>📱 01112221764<br>✉️ mohfawze2010@gmail.com<br>V-Finance 2.1</div>
+  </div>
+</div>
+<div id="appShell">
+  <header class="topbar">
+    <div class="topbar-right">
+      <button class="menu-btn" onclick="openDrawer()">☰</button>
+      <div>
+        <div class="topbar-title" id="topTitle">بوابة السنتر</div>
+        <div class="topbar-sub" id="topSub">مالك السنتر</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <button type="button" class="exit-btn" style="background:rgba(255,255,255,.2);position:relative;" onclick="showNotifPanel()" title="إشعارات">
+        🔔<span id="notifBadge" style="display:none;position:absolute;top:-4px;left:-4px;background:#d9534f;color:#fff;font-size:10px;min-width:16px;height:16px;border-radius:8px;align-items:center;justify-content:center;font-weight:bold;"></span>
+      </button>
+      <button type="button" class="exit-btn" onclick="doLogout()" title="خروج">←</button>
+    </div>
+  </header>
+  <div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+  <aside class="drawer" id="drawer">
+    <div class="drawer-header">
+      <div class="drawer-user" id="drawerName">—</div>
+      <div class="drawer-role" id="drawerRole">👑 مالك السنتر</div>
+    </div>
+    <nav class="drawer-nav" id="drawerNav"></nav>
+  </aside>
+  <main class="main" id="mainContent"></main>
+  <div class="bottom-back" id="bottomBack">
+    <button type="button" class="btn" onclick="goBackNav()">← الرجوع للخلف</button>
+  </div>
+</div>
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-header"><h3 id="modalTitle">—</h3><button class="modal-close" onclick="closeModal()">×</button></div>
+    <div id="modalBody"></div>
+    <div class="modal-footer" id="modalFooter"></div>
+  </div>
+</div>
+<div id="loadingOverlay"><div class="spinner"></div><div id="loadingText">...</div></div>
+<div class="toast" id="toast"></div>
+<script>
+const firebaseConfig={
+  apiKey:"AIzaSyCDSb1TCJ-mH5N4g11odqTaOS6uouXPR6E",
+  authDomain:"iqraa-academy-67f65.firebaseapp.com",
+  projectId:"iqraa-academy-67f65",
+  storageBucket:"iqraa-academy-67f65.firebasestorage.app",
+  messagingSenderId:"999950338251",
+  appId:"1:999950338251:web:451e121216235ac810734e",
+  measurementId:"G-BWJ4PMBZNK"
+};
+// مديرو النظام بكامل الصلاحيات
+const ADMIN_EMAILS=["ahmed114145@gmail.com"];
+firebase.initializeApp(firebaseConfig);
+const auth=firebase.auth();
+const db=firebase.firestore();
+// تخزين محلي + مزامنة عند عودة الإنترنت
+try{
+  db.settings({ merge:true, cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED });
+}catch(e){}
+db.enablePersistence({ synchronizeTabs: true }).catch(err=>{
+  if(err.code==="failed-precondition"){
+    console.warn("Persistence: tab أخرى مفتوحة");
+  }else if(err.code==="unimplemented"){
+    console.warn("Persistence غير مدعوم في هذا المتصفح");
+  }else{
+    console.warn("Persistence:", err);
+  }
+});
+// مؤشر حالة الاتصال
+window.addEventListener("online", ()=>{ try{ toast("تمت استعادة الاتصال — جاري المزامنة","ok") }catch(e){} });
+window.addEventListener("offline", ()=>{ try{ toast("وضع عدم الاتصال — البيانات تُحفظ محلياً","err") }catch(e){} });
+let currentUser=null,profile=null,currentPage="home";
+let cache={groups:[],teachers:[],students:[],sessions:[],payments:[],schedule:[],staff:[]};
+let unsubscribers=[];
+let secondaryApp=null,secondaryAuth=null;
+
+const PERM_KEYS=[
+  {key:"addStudent",label:"إضافة / تعديل طالب"},
+  {key:"addTeacher",label:"إضافة / تعديل معلم"},
+  {key:"manageGroups",label:"إدارة المجموعات والربط"},
+  {key:"registerSession",label:"تسجيل الجلسات"},
+  {key:"manageSchedule",label:"جدول اليوم"},
+  {key:"collectStudent",label:"تحصيل مستحقات الطلاب"},
+  {key:"payTeacher",label:"تسديد مستحقات المعلمين"},
+  {key:"deleteData",label:"حذف مجموعة / عنصر"},
+  {key:"wipeAll",label:"مسح البيانات بالكامل"},
+  {key:"manageStaff",label:"إدارة المشرفين المساعدين"}
+];
+const ALL_PERMS=Object.fromEntries(PERM_KEYS.map(p=>[p.key,true]));
+
+function isOwner(){const r=(profile?.role||"").toLowerCase();return r==="owner"||r==="super_admin"||r==="admin"||!!(profile?.email&&ADMIN_EMAILS.includes(String(profile.email).toLowerCase()))}
+function can(perm){
+  if(!profile) return false;
+  if(isOwner()) return true;
+  if(profile.role==="supervisor"){
+    if(profile.fullAccess) return true;
+    return !!(profile.perms&&profile.perms[perm]);
+  }
+  return false;
+}
+function requirePerm(perm,msg){if(can(perm)) return true;toast(msg||"ليس لديك صلاحية لهذا الإجراء","err");return false}
+
+const NAV=[
+  {section:"المتابعة"},
+  {id:"home",icon:"🏠",label:"الرئيسية"},
+  {id:"studentDues",icon:"👨‍🎓",label:"مستحقات الطلاب"},
+  {id:"teacherSettle",icon:"💵",label:"مستحقات المعلمين"},
+  {id:"sessions",icon:"✅",label:"الجلسات",perm:"registerSession"},
+  {id:"schedule",icon:"📅",label:"جدول اليوم",perm:"manageSchedule"},
+  {section:"البيانات"},
+  {id:"groups",icon:"🔗",label:"المجموعات (ربط)",perm:"manageGroups"},
+  {id:"teachers",icon:"👨‍🏫",label:"المعلمون",perm:"addTeacher"},
+  {id:"students",icon:"➕",label:"إضافة / تعديل طالب",perm:"addStudent"},
+  {id:"staff",icon:"🛡️",label:"المشرفون المساعدون",perm:"manageStaff"},
+  {section:"أخرى"},
+  {id:"reports",icon:"📈",label:"التقارير"},
+  {id:"settings",icon:"⚙️",label:"إعدادات السنتر"}
+];
+let centerMeta={name:"بوابة السنتر",logoData:""};
+
+
+function waLink(phone){
+  let d=String(phone||"").replace(/[^0-9]/g,"");
+  if(!d) return "";
+  if(d.startsWith("00")) d=d.slice(2);
+  if(d.startsWith("0")&&d.length>=10) d="20"+d.slice(1);
+  if(!d.startsWith("20")&&d.length<=11) d="20"+d;
+  return "https://wa.me/"+d;
+}
+function waBtn(phone,label){
+  const href=waLink(phone);
+  if(!href) return "";
+  return `<a class="btn btn-success btn-sm" href="${href}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="text-decoration:none">💬 ${label||"واتساب"}</a>`;
+}
+function isPaused(p){return !!(p&&(p.paused===true||p.active===false))}
+function pauseReminderDue(p){if(!isPaused(p)||!p.pauseRemindAt) return false;return p.pauseRemindAt<=todayISO()}
+function getPauseNotifications(){
+  const list=[];
+  (cache.students||[]).forEach(s=>{if(pauseReminderDue(s)) list.push({type:"student",id:s.id,name:s.name,msg:"تذكير: الطالب موقوف — "+(s.pauseNote||"راجع وضعه")})});
+  (cache.teachers||[]).forEach(t=>{if(pauseReminderDue(t)) list.push({type:"teacher",id:t.id,name:t.name,msg:"تذكير: المعلم موقوف — "+(t.pauseNote||"راجع وضعه")})});
+  return list;
+}
+
+function $(id){return document.getElementById(id)}
+function showLoading(t){$("loadingText").textContent=t||"...";$("loadingOverlay").classList.add("show")}
+function hideLoading(){$("loadingOverlay").classList.remove("show")}
+function toast(msg,type){const el=$("toast");el.textContent=msg;el.className="toast show "+(type||"");setTimeout(()=>el.classList.remove("show"),3000)}
+function sanitize(s){return String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
+function phoneToEmail(input){const t=String(input||"").trim();if(t.includes("@"))return t.toLowerCase();const d=t.replace(/[^0-9]/g,"");return(d||"user")+"@center.local"}
+function digitsOnly(p){return String(p||"").replace(/[^0-9]/g,"")}
+function welcomeMsg(role,name,phone,pass){
+  const center=centerMeta.name||"الأكاديمية";
+  const who=role==="teacher"?"المعلم":"الطالب";
+  return `السلام عليكم ${name||""} 👋
+تم تسجيلكم في *${center}* كـ${who}.
+
+📱 رقم الدخول: ${phone}
+🔐 كلمة المرور: ${pass}
+
+يمكنكم الدخول لمتابعة الجلسات والمستحقات والواجبات.
+مع تمنياتنا بالتوفيق 🌟`;
+}
+async function createPortalAccount(role,name,phone,pass){
+  const dig=digitsOnly(phone);
+  if(!dig||dig.length<8) throw new Error("رقم الموبايل مطلوب لإنشاء الحساب (8 أرقام فأكثر)");
+  let password=(pass||"").trim()||dig;
+  if(password.length<6) password=dig.length>=6?dig:(dig+"000000").slice(0,6);
+  const email=phoneToEmail(phone);
+  const sec=getSecondaryAuth();
+  let uid=null;
+  try{
+    const cred=await sec.createUserWithEmailAndPassword(email,password);
+    uid=cred.user.uid;
+  }catch(e){
+    if(e.code==="auth/email-already-in-use"){
+      throw new Error("هذا الرقم مسجّل مسبقاً كحساب دخول");
+    }
+    throw e;
+  }
+  try{
+    await db.collection("center_users").doc(uid).set({
+      name, phone:dig, email, role, active:true,
+      linkedType:role==="teacher"?"teacher":"student",
+      createdAt:Date.now(), createdBy:currentUser?.uid||null
+    });
+  }catch(e){ console.warn(e); }
+  try{ await sec.signOut(); }catch(e){}
+  return {uid, email, password, phone:dig};
+}
+function offerWhatsAppCreds(role,name,phone,pass){
+  const href=waLink(phone);
+  if(!href){toast("لا يوجد رقم واتساب صالح","err");return}
+  const text=encodeURIComponent(welcomeMsg(role,name,phone,pass));
+  window.open(href+(href.includes("?")?"&":"?")+"text="+text, "_blank");
+}
+
+function todayISO(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+function monthKey(d){return (d||todayISO()).slice(0,7)}
+function fmtDate(v){if(!v)return"—";if(typeof v==="number")return new Date(v).toLocaleDateString("ar-EG");return String(v)}
+function money(n){return Number(n||0).toLocaleString("en-US")}
+function openDrawer(){$("drawer").classList.add("open");$("drawerOverlay").classList.add("show")}
+function closeDrawer(){$("drawer").classList.remove("open");$("drawerOverlay").classList.remove("show")}
+function openModal(title,body,footer){$("modalTitle").textContent=title;$("modalBody").innerHTML=body;$("modalFooter").innerHTML=footer||`<button class="btn btn-outline btn-sm" onclick="closeModal()">إغلاق</button>`;$("modalOverlay").classList.add("show")}
+function closeModal(){$("modalOverlay").classList.remove("show")}
+function getSecondaryAuth(){if(!secondaryAuth){secondaryApp=firebase.initializeApp(firebaseConfig,"SecondaryStaff");secondaryAuth=secondaryApp.auth()}return secondaryAuth}
+
+function buildDrawer(){
+  let html="";
+  NAV.forEach(item=>{
+    if(item.section){html+=`<div class="nav-section">${item.section}</div>`;return}
+    if(item.perm&&!can(item.perm)) return;
+    html+=`<button class="nav-item ${currentPage===item.id?"active":""}" onclick="goPage('${item.id}')"><span>${item.icon}</span><span>${item.label}</span></button>`;
+  });
+  $("drawerNav").innerHTML=html;
+  $("drawerName").textContent=profile?.name||"—";
+  const roleEl=$("drawerRole");
+  if(roleEl) roleEl.textContent=isOwner()?"👑 مالك السنتر":"🛡️ مشرف مساعد";
+}
+let pageHistory=[];
+function goPage(id,skipHist){
+  const item=NAV.find(n=>n.id===id);
+  if(item&&item.perm&&!can(item.perm)){toast("ليس لديك صلاحية","err");return}
+  if(!skipHist && currentPage && currentPage!==id) pageHistory.push(currentPage);
+  if(pageHistory.length>20) pageHistory.shift();
+  currentPage=id;closeDrawer();renderPage();
+  window.scrollTo(0,0);
+}
+function goBackNav(){
+  const prev=pageHistory.pop();
+  if(prev) goPage(prev,true);
+  else goPage("home",true);
+}
+
+
+async function doLogin(){
+  const phone=$("loginPhone").value.trim(),pass=$("loginPass").value;
+  if(!phone||!pass){toast("أدخل البيانات","err");return}
+  $("loginBtn").disabled=true;$("loginBtn").textContent="...";
+  try{await auth.signInWithEmailAndPassword(phoneToEmail(phone),pass)}
+  catch(e){
+    const c=e.code||"";
+    let m="فشل الدخول";
+    if(c==="auth/user-not-found"||c==="auth/invalid-credential"||c==="auth/invalid-login-credentials") m="البريد أو كلمة المرور غير صحيحة، أو الحساب غير موجود في Authentication";
+    else if(c==="auth/wrong-password") m="كلمة المرور غير صحيحة";
+    else if(c==="auth/operation-not-allowed") m="تسجيل الدخول بالبريد وكلمة المرور غير مفعّل في Firebase";
+    else if(c==="auth/unauthorized-domain") m="النطاق غير مصرح به في Firebase (Authorized domains)";
+    else if(c==="auth/too-many-requests") m="محاولات كثيرة — حاول لاحقاً";
+    else if(c==="auth/network-request-failed") m="مشكلة في الاتصال بالإنترنت";
+    else if(c) m="فشل الدخول: "+c;
+    console.warn("login error",e);
+    toast(m,"err");$("loginBtn").disabled=false;$("loginBtn").textContent="دخول"}
+}
+async function doForgotPassword(){
+  const input=($("loginPhone")?.value||"").trim();
+  if(!input){toast("اكتب البريد أو الموبايل أولاً","err");return}
+  // رابط الاستعادة يعمل فقط مع بريد حقيقي مسجّل في Authentication
+  let email=input;
+  if(!input.includes("@")){
+    toast("للاستعادة اكتب البريد الإلكتروني المسجّل للحساب (وليس الموبايل فقط)","err");
+    return;
+  }
+  email=input.toLowerCase();
+  const btn=$("forgotBtn");
+  if(btn){btn.disabled=true;btn.textContent="جاري الإرسال..."}
+  try{
+    await auth.sendPasswordResetEmail(email);
+    toast("تم إرسال رابط استعادة كلمة المرور إلى بريدك","ok");
+  }catch(e){
+    const code=e.code||"";
+    if(code==="auth/user-not-found") toast("لا يوجد حساب بهذا البريد","err");
+    else if(code==="auth/invalid-email") toast("بريد غير صالح","err");
+    else if(code==="auth/too-many-requests") toast("محاولات كثيرة — حاول لاحقاً","err");
+    else toast("تعذر الإرسال: "+(e.message||e),"err");
+  }
+  if(btn){btn.disabled=false;btn.textContent="نسيت كلمة المرور؟"}
+}
+function doLogout(){auth.signOut()}
+// الدخول بزر Enter
+["loginPhone","loginPass"].forEach(id=>{
+  const el=document.getElementById(id);
+  if(el) el.addEventListener("keydown",e=>{
+    if(e.key==="Enter"){e.preventDefault();const b=document.getElementById("loginBtn");if(b&&!b.disabled) doLogin()}
+  });
+});
+
+auth.onAuthStateChanged(async user=>{
+  if(!user){
+    currentUser=null;profile=null;
+    $("loginScreen").style.display="flex";$("appShell").classList.remove("active");
+    $("loginBtn").disabled=false;$("loginBtn").textContent="دخول";
+    return;
+  }
+  currentUser=user;
+  showLoading("جاري التحميل...");
+  try{
+    let udoc=await db.collection("center_users").doc(user.uid).get();
+    // إنشاء وثيقة المدير تلقائياً عند أول دخول
+    if(!udoc.exists && user.email && ADMIN_EMAILS.includes(user.email.toLowerCase())){
+      await db.collection("center_users").doc(user.uid).set({
+        name:"أحمد (المدير)", phone:"", email:user.email, role:"owner", active:true, createdAt:Date.now()
+      });
+      udoc=await db.collection("center_users").doc(user.uid).get();
+    }
+    if(!udoc.exists){toast("أنشئ وثيقة المستخدم في center_users","err");await auth.signOut();hideLoading();return}
+    profile={id:user.uid,...udoc.data()};
+    if(profile.email&&ADMIN_EMAILS.includes(String(profile.email).toLowerCase())) profile.role="owner";
+    let role=(profile.role||"").toLowerCase();
+    if(role==="super_admin"||role==="admin"){role="owner";profile.role="owner"}
+    if(role!=="owner"&&role!=="supervisor"){toast("هذا الحساب غير مصرح له","err");await auth.signOut();hideLoading();return}
+    if(role==="supervisor"&&profile.active===false){toast("حساب المشرف موقوف","err");await auth.signOut();hideLoading();return}
+    $("loginScreen").style.display="none";$("appShell").classList.add("active");
+    $("topSub").textContent=(profile.name||"")+(isOwner()?"":" · مشرف");
+    buildDrawer();await loadCenterMeta();await loadAll();listenRealtime();goPage("home");
+  }catch(e){toast(e.message,"err")}
+  hideLoading();
+});
+
+async function loadCenterMeta(){
+  try{
+    const doc=await db.collection("center_meta").doc("config").get();
+    if(doc.exists) centerMeta={...centerMeta,...(doc.data()||{})};
+  }catch(e){console.warn(e)}
+  applyCenterBranding();
+}
+function applyCenterBranding(){
+  const title=centerMeta.name||"بوابة السنتر";
+  document.title=title;
+  const el=document.querySelector(".login-title");
+  if(el) el.textContent=title;
+  const top=$("topTitle");
+  if(top) top.textContent=title;
+  const logoImg=$("centerLogoImg");
+  const logoLogin=$("loginLogo");
+  if(centerMeta.logoData){
+    if(logoImg){logoImg.src=centerMeta.logoData;logoImg.style.display="block"}
+    if(logoLogin){logoLogin.src=centerMeta.logoData;logoLogin.style.display="block"}
+  }else{
+    if(logoLogin) logoLogin.style.display="none";
+  }
+}
+async function loadAll(){
+  const cols=["center_groups","center_teachers","center_students","center_sessions","center_payments","center_schedule"];
+  const keys=["groups","teachers","students","sessions","payments","schedule"];
+  for(let i=0;i<cols.length;i++){
+    try{const snap=await db.collection(cols[i]).get();cache[keys[i]]=snap.docs.map(d=>({id:d.id,...d.data()}))}
+    catch(e){cache[keys[i]]=cache[keys[i]]||[]}
+  }
+  try{
+    const us=await db.collection("center_users").where("role","==","supervisor").get();
+    cache.staff=us.docs.map(d=>({id:d.id,...d.data()}));
+  }catch(e){
+    try{const all=await db.collection("center_users").get();cache.staff=all.docs.map(d=>({id:d.id,...d.data()})).filter(u=>(u.role||"")==="supervisor")}
+    catch(e2){cache.staff=[]}
+  }
+  cache.sessions.sort((a,b)=>(a.date||"").localeCompare(b.date||"")||(a.createdAt||0)-(b.createdAt||0));
+  cache.payments.sort((a,b)=>(b.at||0)-(a.at||0));
+}
+/* سحب للتحديث + فلاتر القوائم */
+let listFilter={students:"all",teachers:"all",groups:"all"};
+let pageQ={};
+let collectFilter={q:"",month:"",year:null};
+
+let pullStartY=0,pulling=false;
+function setupPullRefresh(){
+  const main=$("mainContent");
+  if(!main||main.dataset.pullBound) return;
+  main.dataset.pullBound="1";
+  let hint=document.getElementById("pullHint");
+  if(!hint){
+    hint=document.createElement("div");
+    hint.id="pullHint";
+    hint.className="pull-hint";
+    hint.textContent="↓ اسحب للتحديث";
+    main.parentNode.insertBefore(hint,main);
+  }
+  main.addEventListener("touchstart",e=>{
+    if(window.scrollY<=0){pullStartY=e.touches[0].clientY;pulling=true}
+  },{passive:true});
+  main.addEventListener("touchmove",e=>{
+    if(!pulling) return;
+    const dy=e.touches[0].clientY-pullStartY;
+    if(dy>60) hint.classList.add("show");
+  },{passive:true});
+  main.addEventListener("touchend",async e=>{
+    if(!pulling) return;
+    pulling=false;
+    const dy=(e.changedTouches[0].clientY-pullStartY);
+    hint.classList.remove("show");
+    if(dy>80 && window.scrollY<=2){
+      hint.textContent="جاري التحديث...";hint.classList.add("show");
+      try{await loadAll();renderPage();toast("تم التحديث","ok")}
+      catch(err){toast("تعذر التحديث","err")}
+      hint.classList.remove("show");hint.textContent="↓ اسحب للتحديث";
+    }
+  },{passive:true});
+}
+function setListFilter(page,val){
+  listFilter[page]=val;
+  renderPage();
+}
+
+function listenRealtime(){
+  unsubscribers.forEach(u=>{try{u()}catch(e){}});
+  unsubscribers=[];
+  const cols=["center_groups","center_teachers","center_students","center_sessions","center_payments","center_schedule"];
+  const keys=["groups","teachers","students","sessions","payments","schedule"];
+  cols.forEach((col,i)=>{
+    unsubscribers.push(db.collection(col).onSnapshot(snap=>{
+      cache[keys[i]]=snap.docs.map(d=>({id:d.id,...d.data()}));
+      if(keys[i]==="sessions") cache.sessions.sort((a,b)=>(a.date||"").localeCompare(b.date||"")||(a.createdAt||0)-(b.createdAt||0));
+      if(keys[i]==="payments") cache.payments.sort((a,b)=>(b.at||0)-(a.at||0));
+      renderPage();
+    },e=>console.warn(col,e)));
+  });
+  unsubscribers.push(db.collection("center_users").onSnapshot(snap=>{
+    cache.staff=snap.docs.map(d=>({id:d.id,...d.data()})).filter(u=>(u.role||"")==="supervisor");
+    if(currentPage==="staff") renderPage();
+  },e=>console.warn("users",e)));
+}
+
+function isSessionOk(s){return !s.status||s.status==="approved"}
+function teacherSessionAmount(t,session){
+  if((t.payMode||"fixed")==="per_student"){
+    const present=(session.attendance||[]).filter(a=>a.status==="present").length;
+    return present*Number(t.ratePerStudent||t.ratePerSession||0);
+  }
+  return Number(session.rateAtTime!=null?session.rateAtTime:t.ratePerSession||0);
+}
+function sessionsFor(teacherId,groupId){
+  return (cache.sessions||[]).filter(s=>isSessionOk(s)&&(s.teacherId===teacherId)&&(!groupId||s.groupId===groupId));
+}
+function buildTeacherCycles(teacher,groupId){
+  const cycleSize=Math.max(1,Number(teacher.sessionsPerCycle)||8);
+  const all=sessionsFor(teacher.id,groupId);
+  if(!all.length) return [];
+  const pays=(cache.payments||[]).filter(p=>p.type==="teacher_payment"&&p.teacherId===teacher.id&&p.groupId===groupId);
+  const cycles=[];
+  for(let c=0;c<Math.ceil(all.length/cycleSize);c++){
+    const slice=all.slice(c*cycleSize,(c+1)*cycleSize);
+    const amount=slice.reduce((sum,s)=>sum+teacherSessionAmount(teacher,s),0);
+    const cyclePays=pays.filter(p=>Number(p.cycleIndex)===c);
+    const paid=cyclePays.reduce((sum,p)=>sum+Number(p.amount||0),0);
+    const lastPay=cyclePays.sort((a,b)=>(b.at||0)-(a.at||0))[0];
+    const full=slice.length>=cycleSize;
+    const closed=!!(teacher.closedCycles&&teacher.closedCycles[groupId]&&teacher.closedCycles[groupId][c]);
+    const remaining=Math.max(0,amount-paid);
+    cycles.push({
+      cycleIndex:c,cycleNum:c+1,sessions:slice.length,cycleSize,full,amount,paid,remaining,
+      closed:!!closed,
+      lastPayDate:lastPay?(lastPay.payDate||fmtDate(lastPay.at)):null,
+      lastPayNote:lastPay?(lastPay.note||""):"",
+      groupId,teacherId:teacher.id,
+      sessionDetails:slice.map((s,i)=>({
+        n:i+1,date:s.date||"—",time:s.time||"",
+        present:(s.attendance||[]).filter(a=>a.status==="present").length,
+        absent:(s.attendance||[]).filter(a=>a.status==="absent").length,
+        amount:teacherSessionAmount(teacher,s),note:s.note||""
+      }))
+    });
+  }
+  return cycles;
+}
+function studentBillableSessions(student,en){
+  return (cache.sessions||[]).filter(sess=>{
+    if(!isSessionOk(sess)||sess.groupId!==en.groupId) return false;
+    const att=(sess.attendance||[]).find(a=>a.studentId===student.id);
+    if(!att) return false;
+    if(att.status==="present") return true;
+    return en.chargeOnAbsence===true&&att.status==="absent";
+  }).map(sess=>{
+    const att=(sess.attendance||[]).find(a=>a.studentId===student.id);
+    return {date:sess.date||"—",time:sess.time||"",status:att?.status||"",note:sess.note||""};
+  });
+}
+function studentBillableCount(student,en){return studentBillableSessions(student,en).length}
+function teacherDueScore(t){
+  let score=0,dueAmount=0,fullPending=0,inProgress=0;
+  cache.groups.filter(g=>(g.teacherIds||[]).includes(t.id)).forEach(g=>{
+    buildTeacherCycles(t,g.id).forEach(cy=>{
+      if(cy.closed) return;
+      // أحمر / مستحق فقط عند اكتمال عدد حصص الدورة
+      if(cy.full&&cy.remaining>0){fullPending++;dueAmount+=cy.remaining;score+=1000+cy.remaining}
+      else if(cy.full&&cy.remaining<=0) score+=50;
+      else if(cy.sessions>0){inProgress++;score+=1} // جارية غير مكتملة — تظهر بدون أحمر
+    });
+  });
+  return {score,dueAmount,fullPending};
+}
+function countMonths(startStr){
+  if(!startStr) return 1;
+  const start=new Date(startStr),now=new Date();
+  if(isNaN(start.getTime())) return 1;
+  return Math.max(1,(now.getFullYear()-start.getFullYear())*12+(now.getMonth()-start.getMonth())+1);
+}
+const AR_MONTHS=["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
+function monthLabel(ym){
+  // ym = YYYY-MM
+  const [y,m]=String(ym).split("-").map(Number);
+  if(!y||!m) return ym;
+  return "تسوية "+AR_MONTHS[m-1]+" "+y;
+}
+function clampPayDay(d){return Math.min(28, Math.max(1, Number(d)||5));}
+/** تاريخ استحقاق تسوية شهر coverageYM حسب مقدم/مؤخر */
+function settlementDueDate(coverageYM, payTiming, payDay){
+  const [y,m]=coverageYM.split("-").map(Number);
+  const pd=clampPayDay(payDay);
+  if((payTiming||"advance")==="advance"){
+    // مقدَّم: يستحق خلال شهر التغطية في يوم الدفع
+    return y+"-"+String(m).padStart(2,"0")+"-"+String(pd).padStart(2,"0");
+  }
+  // مؤخَّر: بعد انتهاء شهر التغطية → يوم الدفع من الشهر التالي
+  let ny=y, nm=m+1;
+  if(nm>12){nm=1;ny++}
+  return ny+"-"+String(nm).padStart(2,"0")+"-"+String(pd).padStart(2,"0");
+}
+function listCoverageMonths(startStr, endStr){
+  // من بداية الاشتراك حتى endStr (YYYY-MM-DD)
+  const out=[];
+  if(!startStr) return out;
+  const s=new Date(startStr);
+  if(isNaN(s.getTime())) return out;
+  let y=s.getFullYear(), m=s.getMonth()+1;
+  const end=endStr?new Date(endStr):new Date();
+  const ey=end.getFullYear(), em=end.getMonth()+1;
+  while(y<ey || (y===ey && m<=em)){
+    out.push(y+"-"+String(m).padStart(2,"0"));
+    m++; if(m>12){m=1;y++}
+    if(out.length>120) break;
+  }
+  return out;
+}
+function studentPaymentsList(s){
+  return (cache.payments||[])
+    .filter(p=>p.type==="student_payment"&&p.studentId===s.id)
+    .slice()
+    .sort((a,b)=>(a.at||0)-(b.at||0));
+}
+function studentPaid(s){
+  return studentPaymentsList(s).reduce((sum,p)=>sum+Number(p.amount||0),0);
+}
+/**
+ * يبني تسويات شهرية باسم «تسوية أكتوبر 2026»
+ * مقدم: تستحق يوم الدفع داخل نفس الشهر
+ * مؤخر: تستحق يوم الدفع من الشهر التالي (بعد انتهاء الشهر)
+ * يوم الدفع 1–28 (فبراير آمن)
+ */
+function buildStudentSettlements(s){
+  const pays=studentPaymentsList(s);
+  // مدفوعات مربوطة بتسوية معيّنة
+  const allocated=new Map(); // key -> amount
+  const unassigned=[];
+  pays.forEach(p=>{
+    const amt=Number(p.amount||0);
+    if(p.settlementKey){
+      allocated.set(p.settlementKey,(allocated.get(p.settlementKey)||0)+amt);
+    }else if(p.settlementYm){
+      // توافق قديم: حسب الشهر
+      const k="ym:"+p.settlementYm;
+      allocated.set(k,(allocated.get(k)||0)+amt);
+    }else{
+      unassigned.push(amt);
+    }
+  });
+  let pool=unassigned.reduce((a,b)=>a+b,0);
+  const settlements=[];
+  const today=todayISO();
+
+  (s.enrollments||[]).forEach(e=>{
+    if(e.type==="monthly"){
+      const price=Number(e.monthlyPrice||0);
+      const timing=e.payTiming||"advance";
+      const payDay=clampPayDay(e.payDay);
+      const months=listCoverageMonths(e.startDate||e.enrolledAt, todayISO());
+      months.forEach(ym=>{
+        const due=settlementDueDate(ym, timing, payDay);
+        const isDue=due<=today;
+        const key=s.id+"_"+e.groupId+"_"+ym;
+        // اسم التسوية = شهر الظهور (شهر تاريخ الاستحقاق) عند المقدَّم = نفس شهر التغطية
+        // عند المؤخَّر الاستحقاق في الشهر التالي لكن الاسم يبقى شهر التغطية (أكتوبر)
+        const label=monthLabel(ym); // بدون تكرار مقدَّم/مؤخَّر
+        let paid=allocated.get(key)||0;
+        // مدفوعات قديمة حسب ym فقط
+        const ymExtra=allocated.get("ym:"+ym)||0;
+        if(ymExtra>0){
+          const use=Math.min(ymExtra, Math.max(0,price-paid));
+          paid+=use;
+          allocated.set("ym:"+ym, ymExtra-use);
+        }
+        // الباقي غير المعيّن يُترك للأدمن — لا يُخصم تلقائياً من تسوية أخرى
+        // لكن إن بقي pool يمكن عرضه كرصيد عام
+        const remaining=Math.max(0, price-paid);
+        settlements.push({
+          key, groupId:e.groupId, ym, label, timing, payDay, dueDate:due,
+          amount:price, paid, remaining, isDue,
+          open:remaining>0 && isDue,
+          type:"monthly"
+        });
+      });
+    }else{
+      const n=studentBillableCount(s,e);
+      const rate=Number(e.sessionRate||0);
+      const amount=n*rate;
+      if(amount<=0 && n===0) return;
+      const g=cache.groups.find(x=>x.id===e.groupId);
+      const key=s.id+"_"+e.groupId+"_sessions";
+      let paid=allocated.get(key)||0;
+      const remaining=Math.max(0, amount-paid);
+      settlements.push({
+        key, groupId:e.groupId, ym:null,
+        label:"حصص "+(g?.name||""),
+        timing:e.payTiming||"advance", payDay:clampPayDay(e.payDay),
+        dueDate:todayISO(), amount, paid, remaining,
+        isDue:remaining>0, open:remaining>0,
+        type:"session", sessions:n, rate
+      });
+    }
+  });
+  // الأحدث أولاً
+  settlements.sort((a,b)=>{
+    const ka=a.ym||a.dueDate||"";
+    const kb=b.ym||b.dueDate||"";
+    return String(kb).localeCompare(String(ka));
+  });
+  const unassignedLeft=pool;
+  return {settlements, unassignedPaid:unassignedLeft};
+}
+function studentRequired(s){
+  return buildStudentSettlements(s).settlements.reduce((sum,x)=>sum+x.amount,0);
+}
+function studentFinance(s){
+  const built=buildStudentSettlements(s);
+  const settlements=built.settlements;
+  const required=settlements.reduce((sum,x)=>sum+x.amount,0);
+  const paid=studentPaid(s);
+  const unpaid=settlements.reduce((sum,x)=>sum+x.remaining,0);
+  const openSettlements=settlements.filter(x=>x.open);
+  const showDue=openSettlements.length>0;
+  let dueSessions=0;
+  (s.enrollments||[]).forEach(e=>{if(e.type!=="monthly") dueSessions+=studentBillableCount(s,e)});
+  // متوقع هذا الشهر = المتبقي فقط من تسويات الشهر الحالي (المدفوع ينتقل للمتحصلات)
+  const curYM=todayISO().slice(0,7);
+  let expectedThisMonth=0;
+  settlements.forEach(x=>{
+    const inMonth=(x.ym&&x.ym===curYM)||(x.dueDate&&String(x.dueDate).slice(0,7)===curYM);
+    if(inMonth) expectedThisMonth+=Number(x.remaining||0);
+  });
+  // إن لم توجد تسوية شهرية بعد: يظهر السعر الكامل كمتوقع
+  if(expectedThisMonth===0 && !settlements.some(x=>(x.ym&&x.ym===curYM)||(x.dueDate&&String(x.dueDate).slice(0,7)===curYM))){
+    (s.enrollments||[]).forEach(e=>{
+      if(e.type==="monthly") expectedThisMonth+=Number(e.monthlyPrice||0);
+      else expectedThisMonth+=Number(e.sessionRate||0);
+    });
+  }
+  return {required,paid,unpaid,dueSessions,showDue,expectedThisMonth,settlements,openSettlements,unassignedPaid:built.unassignedPaid||0};
+}
+
+
+function renderPage(){
+  const _ae=document.activeElement;
+  const _keep=(_ae&&_ae.dataset&&_ae.dataset.sk)?{k:_ae.dataset.sk,s:_ae.selectionStart,e:_ae.selectionEnd}:null;
+  const map={home:renderHome,studentDues:renderStudentDues,teacherSettle:renderTeacherSettle,archive:renderArchive,sessions:renderSessions,schedule:renderSchedule,groups:renderGroups,teachers:renderTeachers,students:renderStudentsManage,staff:renderStaff,reports:renderReports,settings:renderSettings};
+  if(!map[currentPage]){ console.warn("unknown page",currentPage); currentPage="home"; }
+  $("mainContent").innerHTML=(map[currentPage]||renderHome)();
+  if(_keep){
+    const n=document.querySelector('[data-sk="'+_keep.k+'"]');
+    if(n){n.focus();try{n.setSelectionRange(_keep.s,_keep.e)}catch(e){}}
+  }
+  const titles={home:centerMeta.name||"الرئيسية",studentDues:"مستحقات الطلاب",teacherSettle:"مستحقات المعلمين",sessions:"الجلسات",schedule:"الجدول",groups:"المجموعات",teachers:"المعلمون",students:"الطلاب",staff:"المشرفون",reports:"التقارير",settings:"الإعدادات",archive:"الأرشيف"};
+  const top=$("topTitle"); if(top) top.textContent=titles[currentPage]||(centerMeta.name||"السنتر");
+  updateNotifBadge();
+  { const bb=$("bottomBack"); if(bb) bb.classList.toggle("show",currentPage!=="home"); }
+  setupPullRefresh();
+  buildDrawer();
+  bindCollectSearch();
+}
+function bindCollectSearch(){
+  const inp=$("cfQ");
+  if(!inp||inp._bound) return;
+  inp._bound=1;
+  let timer=null;
+  inp.addEventListener("input",()=>{
+    collectFilter.q=inp.value||"";
+    clearTimeout(timer);
+    timer=setTimeout(()=>{
+      const pos=inp.selectionStart;
+      const val=inp.value;
+      renderPage();
+      setTimeout(()=>{
+        const n=$("cfQ");
+        if(n){n.value=val;n.focus();try{n.setSelectionRange(pos,pos)}catch(e){}}
+      },20);
+    },300);
+  });
+}
+
+function updateNotifBadge(){
+  const n=getPauseNotifications().length,b=$("notifBadge");
+  if(!b) return;
+  if(n>0){b.style.display="flex";b.textContent=n>9?"9+":String(n)} else b.style.display="none";
+}
+function showNotifPanel(){
+  const list=getPauseNotifications();
+  if(!list.length){toast("لا إشعارات حالياً","ok");return}
+  openModal("🔔 إشعارات",list.map(n=>`
+    <div class="list-item due" style="cursor:default">
+      <div><div class="item-title">${n.type==="student"?"طالب":"معلم"}: ${sanitize(n.name)}</div>
+      <div class="item-meta">${sanitize(n.msg)}</div></div>
+      <button class="btn btn-outline btn-sm" onclick="goPage('${n.type==="student"?"students":"teachers"}');closeModal()">فتح</button>
+    </div>`).join(""));
+}
+
+
+const WEEK_DAYS=[
+  {id:6,label:"السبت"},
+  {id:0,label:"الأحد"},
+  {id:1,label:"الاثنين"},
+  {id:2,label:"الثلاثاء"},
+  {id:3,label:"الأربعاء"},
+  {id:4,label:"الخميس"},
+  {id:5,label:"الجمعة"}
+];
+function weekDayName(d){const x=WEEK_DAYS.find(w=>w.id===Number(d));return x?x.label:String(d)}
+function todayWeekId(){return new Date().getDay()} // 0=Sun .. 6=Sat
+
+function monthCollectPayments(){
+  const mk=monthKey();
+  return (cache.payments||[]).filter(p=>p.type==="student_payment"&&monthKey(p.payDate||(p.at?new Date(p.at).toISOString().slice(0,10):""))===mk);
+}
+let homePanel="students";
+
+
+function refreshCollectOnly(){
+  if(currentPage!=="home"){renderPage();return}
+  homePanel="collect";
+  // preserve search text
+  const qEl=document.getElementById("cfQ");
+  if(qEl) collectFilter.q=qEl.value||"";
+  renderPage();
+  setTimeout(()=>{
+    const inp=$("cfQ");
+    if(inp){
+      inp.focus();
+      const len=inp.value.length;
+      try{inp.setSelectionRange(len,len)}catch(e){}
+      if(!inp._bound){
+        inp._bound=1;
+        let timer=null;
+        inp.addEventListener("input",()=>{
+          collectFilter.q=inp.value||"";
+          clearTimeout(timer);
+          timer=setTimeout(()=>{
+            const pos=inp.selectionStart;
+            renderPage();
+            setTimeout(()=>{
+              const n=$("cfQ");
+              if(n){n.focus();try{n.setSelectionRange(pos,pos)}catch(e){}}
+            },30);
+          },280);
+        });
+      }
+    }
+  },40);
+}
+
+function setHomePanel(panel){
+  homePanel=panel;
+  if(panel==="collect"){
+    const mk=monthKey();
+    if(!collectFilter.month){
+      collectFilter.month=mk;
+      collectFilter.year=Number(mk.slice(0,4));
+    }
+  }
+  if(currentPage!=="home"){goPage("home");return}
+  renderPage();
+  setTimeout(()=>{
+    const el=$("homeDetailPanel");
+    if(el) el.scrollIntoView({behavior:"smooth",block:"start"});
+  },50);
+}
+
+function renderHome(){
+  const activeStu=cache.students.filter(s=>!isPaused(s));
+  const activeTea=cache.teachers.filter(t=>!isPaused(t));
+  const groups=cache.groups||[];
+  const monthPays=monthCollectPayments();
+  const monthTotal=monthPays.reduce((s,p)=>s+Number(p.amount||0),0);
+  const expectedMonth=activeStu.reduce((sum,s)=>sum+(studentFinance(s).expectedThisMonth||0),0);
+  const centerTitle=sanitize(centerMeta.name||"السنتر");
+
+  const cards=`<div class="stats-grid" style="margin-bottom:14px">
+    <div class="stat-card success ${homePanel==="students"?"active-filter":""}" style="cursor:pointer" onclick="setHomePanel('students')">
+      <div class="stat-num">${activeStu.length}</div>
+      <div class="stat-label">طلاب نشطون — اضغط</div>
+    </div>
+    <div class="stat-card ${homePanel==="teachers"?"active-filter":""}" style="cursor:pointer" onclick="setHomePanel('teachers')">
+      <div class="stat-num">${activeTea.length}</div>
+      <div class="stat-label">معلمون — اضغط</div>
+    </div>
+    <div class="stat-card ${homePanel==="groups"?"active-filter":""}" style="cursor:pointer" onclick="setHomePanel('groups')">
+      <div class="stat-num">${groups.length}</div>
+      <div class="stat-label">مجموعات — اضغط</div>
+    </div>
+    <div class="stat-card warn ${homePanel==="collect"?"active-filter":""}" style="cursor:pointer" onclick="setHomePanel('collect')">
+      <div class="stat-num">${money(monthTotal)}</div>
+      <div class="stat-label">متحصَّل هذا الشهر — اضغط</div>
+    </div>
+    <div class="stat-card ${homePanel==="expected"?"active-filter":""}" style="cursor:pointer" onclick="setHomePanel('expected')">
+      <div class="stat-num">${money(expectedMonth)}</div>
+      <div class="stat-label">متوقع هذا الشهر — اضغط</div>
+    </div>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+    ${can("registerSession")?`<button class="btn btn-primary btn-sm" onclick="openSessionForm()">+ جلسة</button>`:""}
+    ${can("addStudent")?`<button class="btn btn-primary btn-sm" onclick="openStudentForm()">+ طالب</button>`:""}
+    ${can("manageGroups")?`<button class="btn btn-outline btn-sm" onclick="openGroupForm()">+ مجموعة</button>`:""}
+    ${can("addTeacher")?`<button class="btn btn-outline btn-sm" onclick="openTeacherForm()">+ معلم</button>`:""}
+  </div>`;
+
+  let detail="";
+  if(homePanel==="students"){
+    detail=activeStu.map(s=>{
+      const ens=(s.enrollments||[]).map(e=>{
+        const g=cache.groups.find(x=>x.id===e.groupId);
+        return sanitize(g?.name||"");
+      }).filter(Boolean).join("، ")||"بدون مجموعة";
+      return `<div class="list-item ok"><div>
+        <div class="item-title">${sanitize(s.name)}</div>
+        <div class="item-meta">${sanitize(s.phone||"—")} · ${ens}</div>
+      </div>
+      <div class="item-actions">
+        ${waBtn(s.phone)}
+        ${can("addStudent")?`<button class="btn btn-outline btn-sm" onclick="openStudentForm('${s.id}')">تعديل</button>`:""}
+      </div>
+      </div>`;
+    }).join("")||`<div class="empty-state"><p>لا طلاب نشطين</p></div>`;
+    detail=`<div id="homeDetailPanel"><div class="card-title" style="margin-bottom:10px">الطلاب النشطون (${activeStu.length})</div>${detail}</div>`;
+  }else if(homePanel==="teachers"){
+    detail=activeTea.map(t=>`<div class="list-item ok"><div>
+      <div class="item-title">${sanitize(t.name)}</div>
+      <div class="item-meta">${sanitize(t.phone||"—")}</div>
+    </div>
+    ${can("addTeacher")?`<button class="btn btn-outline btn-sm" onclick="openTeacherForm('${t.id}')">تعديل</button>`:""}
+    </div>`).join("")||`<div class="empty-state"><p>لا معلمون</p></div>`;
+    detail=`<div id="homeDetailPanel"><div class="card-title" style="margin-bottom:10px">المعلمون (${activeTea.length})</div>${detail}</div>`;
+  }else if(homePanel==="groups"){
+    detail=groups.map(g=>{
+      const te=cache.teachers.find(x=>(g.teacherIds||[]).includes(x.id));
+      const n=cache.students.filter(s=>(s.enrollments||[]).some(e=>e.groupId===g.id)).length;
+      return `<div class="list-item"><div>
+        <div class="item-title">🔗 ${sanitize(g.name)}</div>
+        <div class="item-meta">المعلم: ${sanitize(te?.name||"—")} · طلاب: ${n}</div>
+      </div>
+      ${can("manageGroups")?`<button class="btn btn-outline btn-sm" onclick="openGroupForm('${g.id}')">تعديل</button>`:""}
+      </div>`;
+    }).join("")||`<div class="empty-state"><p>لا مجموعات</p></div>`;
+    detail=`<div id="homeDetailPanel"><div class="card-title" style="margin-bottom:10px">المجموعات (${groups.length})</div>${detail}</div>`;
+  }else if(homePanel==="collect"){
+    const q=(collectFilter.q||"").trim().toLowerCase();
+    // افتراضي: الشهر الحالي
+    if(!collectFilter.month && !collectFilter.year){
+      collectFilter.month=monthKey();
+      collectFilter.year=Number(monthKey().slice(0,4));
+    }
+    const mk=(collectFilter.month||"").trim();
+    let list=(cache.payments||[]).filter(p=>p.type==="student_payment");
+    if(mk) list=list.filter(p=>monthKey(p.payDate||(p.at?new Date(p.at).toISOString().slice(0,10):""))===mk);
+    else if(collectFilter.year) list=list.filter(p=>monthKey(p.payDate||(p.at?new Date(p.at).toISOString().slice(0,10):"")).slice(0,4)===String(collectFilter.year));
+    if(q) list=list.filter(p=>{
+      const n=((p.studentName||"")+" "+(p.teacherName||"")+" "+(p.groupName||"")+" "+(p.settlementLabel||"")+" "+(p.note||"")).toLowerCase();
+      return n.includes(q);
+    });
+    list=list.slice().sort((a,b)=>(b.at||0)-(a.at||0));
+    const total=list.reduce((s,p)=>s+Number(p.amount||0),0);
+    const monthsSet=new Set(list.map(p=>monthKey(p.payDate||(p.at?new Date(p.at).toISOString().slice(0,10):""))).filter(Boolean));
+    const stuT=list.filter(p=>p.type==="student_payment").reduce((s,p)=>s+Number(p.amount||0),0);
+    const teaT=list.filter(p=>p.type==="teacher_payment").reduce((s,p)=>s+Number(p.amount||0),0);
+    const yNow=new Date().getFullYear();
+    const ySel=Number(collectFilter.year)||yNow;
+    const monthNames=["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
+    const monthGrid=monthNames.map((nm,i)=>{
+      const mm=String(i+1).padStart(2,"0");
+      const val=ySel+"-"+mm;
+      const on=collectFilter.month===val;
+      return `<button type="button" class="btn ${on?"btn-primary":"btn-outline"} btn-sm" style="min-width:0;padding:8px 4px;font-size:11px" onclick="collectFilter.month='${val}';collectFilter.year=${ySel};refreshCollectOnly()">${nm}</button>`;
+    }).join("");
+    const rows=list.map(p=>{
+      const isStu=p.type==="student_payment";
+      return `<div class="list-item ${isStu?"ok":""}"><div>
+        <div class="item-title">${isStu?"تحصيل: "+sanitize(p.studentName||"طالب"):"صرف معلم: "+sanitize(p.teacherName||"")}${p.settlementLabel?` · ${sanitize(p.settlementLabel)}`:""}${p.groupName?` · ${sanitize(p.groupName)}`:""}</div>
+        <div class="item-meta">${money(p.amount)} ج · ${sanitize(p.payDate||fmtDate(p.at))}${p.note?" · "+sanitize(p.note):""}</div>
+      </div>
+      ${(isStu&&can("collectStudent"))||(!isStu&&can("payTeacher"))?`<button class="btn btn-outline btn-sm" onclick="editPayment('${p.id}')">تعديل</button>`:""}
+      </div>`;
+    }).join("")||`<div class="empty-state"><p>لا نتائج للفلتر</p></div>`;
+    detail=`<div id="homeDetailPanel">
+      <div class="card-title" style="margin-bottom:10px">متحصَّلات الطلاب</div>
+      <div class="form-group"><label>بحث ذكي</label>
+        <input id="cfQ" value="${sanitize(collectFilter.q||"")}" placeholder="اسم طالب / تسوية / ملاحظة" autocomplete="off"></div>
+      ${duesFilterHTML("collect")}
+      <div class="stats-grid" style="margin-bottom:12px">
+        <div class="stat-card success"><div class="stat-num">${money(total)}</div><div class="stat-label">إجمالي المفلتر</div></div>
+        <div class="stat-card"><div class="stat-num">${list.length}</div><div class="stat-label">عدد العمليات</div></div>
+      </div>
+      <div id="collectListBox">${rows}</div>
+    </div>`;
+  }else if(homePanel==="expected"){
+    const curYM=todayISO().slice(0,7);
+    const rows=activeStu.map(s=>{
+      const f=studentFinance(s);
+      const monthSett=(f.settlements||[]).filter(x=>(x.ym&&x.ym===curYM)||(x.dueDate&&String(x.dueDate).slice(0,7)===curYM));
+      return {s,f,monthSett};
+    }).filter(x=>{
+      const remain=(x.monthSett||[]).reduce((a,z)=>a+z.remaining,0);
+      return remain>0 || x.f.expectedThisMonth>0;
+    }).filter(x=>(x.monthSett||[]).some(z=>z.remaining>0) || (!(x.monthSett||[]).length && x.f.expectedThisMonth>0));
+    detail=rows.map(({s,f,monthSett})=>{
+      const open=monthSett.filter(x=>x.remaining>0);
+      const primary=open[0]||monthSett[0];
+      const label=primary?primary.label:("تسوية "+(AR_MONTHS[Number(curYM.slice(5,7))-1]||"")+" "+curYM.slice(0,4));
+      const remain=monthSett.reduce((a,x)=>a+x.remaining,0);
+      const monthDue=open.length>0;
+      return `<div class="list-item ${monthDue?"due":"ok"}">
+        <div style="flex:1;min-width:140px">
+          <div class="item-title">${sanitize(s.name)}</div>
+          <div class="item-meta"><b>${sanitize(label)}</b><br>متبقي للتحصيل: <b>${money(remain)} ج</b>${monthSett.some(x=>x.paid>0)?` · سُدد منها ${money(monthSett.reduce((a,x)=>a+x.paid,0))} ج`:""}</div>
+        </div>
+        <div class="item-actions">
+          ${can("collectStudent")&&monthDue?`<button class="btn btn-success btn-sm" onclick="openStudentPay('${s.id}')">تسديد</button>`:""}
+        </div>
+      </div>`;
+    }).join("")||`<div class="empty-state"><p>لا مبالغ متوقعة هذا الشهر</p></div>`;
+    let teaExp="";
+    const teaDue=cache.teachers.filter(x=>!isPaused(x)).map(te=>({te,sc:teacherDueScore(te)})).filter(x=>x.sc.fullPending>0);
+    if(teaDue.length){
+      teaExp=`<div class="card-title" style="margin:16px 0 10px">مستحقات معلمين مكتملة</div>`+
+        teaDue.map(({te,sc})=>`<div class="list-item due"><div>
+          <div class="item-title">${sanitize(te.name)}</div>
+          <div class="item-meta">${sc.fullPending} دورة · ${money(sc.dueAmount)} ج</div>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="goPage('teacherSettle')">عرض</button></div>`).join("");
+    }
+    detail=`<div id="homeDetailPanel"><div class="card-title" style="margin-bottom:10px">إجمالي متوقع الطلاب هذا الشهر: ${money(expectedMonth)} ج</div>${detail}${teaExp}</div>`;
+  }
+
+  const logo=centerMeta.logoData?`<img src="${centerMeta.logoData}" alt="logo" style="height:40px;width:40px;border-radius:10px;object-fit:cover">`:"";
+  return `<div class="page-header">
+    <h2 style="display:flex;align-items:center;gap:10px">${logo}<span>${centerTitle}</span></h2>
+  </div>
+  ${cards}
+  ${detail}`;
+}
+
+/* ===== فلتر السنة/الشهر بالأسهم (مشترك) ===== */
+let duesFilter={student:{year:null,month:""},teacher:{year:null,month:""},sessions:{year:null,month:""}};
+const DUES_QKEY={student:"studentDues",teacher:"teacherSettle",sessions:"sessions"};
+function getYM(kind){return kind==="collect"?collectFilter:duesFilter[kind]}
+function ymRerender(kind){if(kind==="collect") refreshCollectOnly(); else renderPage()}
+function duesFilterActive(kind){const f=getYM(kind);return !!(f&&(f.month||f.year))}
+function dateMatchesDues(kind,ds){
+  const f=getYM(kind);
+  if(!ds) return false;
+  const d=String(ds).slice(0,7);
+  if(f.month) return d===f.month;
+  if(f.year) return d.slice(0,4)===String(f.year);
+  return true;
+}
+function duesFilterHTML(kind){
+  const f=getYM(kind);
+  const ySel=Number(f.year)||new Date().getFullYear();
+  const mi=f.month?Number(String(f.month).slice(5,7)):0;
+  const mLabel=mi?AR_MONTHS[mi-1]:"كل الشهور";
+  const arrow=(fn,txt)=>`<button type="button" class="btn btn-outline btn-sm" style="min-width:36px;padding:8px 10px" onclick="${fn}">${txt}</button>`;
+  return `<div class="card" style="padding:10px">
+    <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;justify-content:space-between">
+      <div class="form-group" style="margin:0;flex:1;min-width:140px"><label>السنة</label>
+        <div style="display:flex;gap:6px;align-items:center">${arrow("ymYear('"+kind+"',-1)","‹")}<b style="min-width:64px;text-align:center">${ySel}</b>${arrow("ymYear('"+kind+"',1)","›")}</div></div>
+      <div class="form-group" style="margin:0;flex:1;min-width:140px"><label>الشهر</label>
+        <div style="display:flex;gap:6px;align-items:center">${arrow("ymMonth('"+kind+"',-1)","‹")}<b style="min-width:72px;text-align:center">${mLabel}</b>${arrow("ymMonth('"+kind+"',1)","›")}</div></div>
+      <button type="button" class="btn btn-outline btn-sm" onclick="duesClear('${kind}')">مسح</button>
+    </div>
+  </div>`;
+}
+function ymYear(kind,d){
+  const f=getYM(kind);
+  const y=(Number(f.year)||new Date().getFullYear())+d;
+  f.year=y;
+  if(f.month) f.month=y+"-"+String(f.month).slice(5,7);
+  ymRerender(kind);
+}
+function ymMonth(kind,d){
+  const f=getYM(kind);
+  const y=Number(f.year)||new Date().getFullYear();
+  let i=f.month?Number(String(f.month).slice(5,7)):0;
+  i+=d; if(i>12) i=0; if(i<0) i=12;
+  f.year=y;
+  f.month=i?(y+"-"+String(i).padStart(2,"0")):"";
+  ymRerender(kind);
+}
+function duesClear(kind){
+  if(kind==="collect"){
+    const el=$("cfQ"); if(el) el.value="";
+    const mk=monthKey();
+    collectFilter.q="";collectFilter.month=mk;collectFilter.year=Number(mk.slice(0,4));
+  }else{
+    duesFilter[kind]={year:null,month:""};
+    pageQ[DUES_QKEY[kind]]="";
+  }
+  ymRerender(kind);
+}
+
+function editSettlementPay(studentId,key){
+  const s=cache.students.find(x=>x.id===studentId);
+  if(!s) return;
+  const x=studentFinance(s).settlements.find(z=>z.key===key);
+  const pays=studentPaymentsList(s).filter(p=>p.settlementKey===key||(!p.settlementKey&&p.settlementYm&&x&&p.settlementYm===x.ym));
+  if(!pays.length){toast("لا مدفوعات مرتبطة بهذه التسوية","err");return}
+  if(pays.length===1){editPayment(pays[0].id);return}
+  openModal("مدفوعات "+(x?.label||""),pays.map(p=>`<div class="list-item"><div>
+    <div class="item-title">${money(p.amount)} ج</div>
+    <div class="item-meta">${sanitize(p.payDate||fmtDate(p.at))}${p.note?" · "+sanitize(p.note):""}</div></div>
+    <button class="btn btn-outline btn-sm" onclick="closeModal();editPayment('${p.id}')">تعديل</button></div>`).join(""));
+}
+function cycleInDues(t,g,cy){
+  if(cy.sessionDetails.some(d=>dateMatchesDues("teacher",d.date))) return true;
+  return (cache.payments||[]).some(p=>p.type==="teacher_payment"&&p.teacherId===t.id&&p.groupId===g.id&&Number(p.cycleIndex)===cy.cycleIndex&&dateMatchesDues("teacher",payDateStr(p)));
+}
+function editTeacherCyclePay(teacherId,groupId,cycleIndex){
+  const pays=(cache.payments||[]).filter(p=>p.type==="teacher_payment"&&p.teacherId===teacherId&&p.groupId===groupId&&Number(p.cycleIndex)===Number(cycleIndex));
+  if(!pays.length){toast("لا مدفوعات لهذه التسوية","err");return}
+  if(pays.length===1){editPayment(pays[0].id);return}
+  openModal("مدفوعات التسوية "+(Number(cycleIndex)+1),pays.map(p=>`<div class="list-item"><div>
+    <div class="item-title">${money(p.amount)} ج</div>
+    <div class="item-meta">${sanitize(p.payDate||fmtDate(p.at))}${p.note?" · "+sanitize(p.note):""}</div></div>
+    <button class="btn btn-outline btn-sm" onclick="closeModal();editPayment('${p.id}')">تعديل</button></div>`).join(""));
+}
+
+function renderStudentDues(){
+  const q=(pageQ.studentDues||"").trim().toLowerCase();
+  const mode=pageQ.studentDuesMode||"all"; // all | open | paid
+  const active=duesFilterActive("student");
+  const rows=cache.students.filter(s=>!isPaused(s)).map(s=>{
+    const f=studentFinance(s);
+    const sets=(f.settlements||[]).filter(x=>!active||dateMatchesDues("student",x.ym||x.dueDate));
+    const required=active?sets.reduce((a,x)=>a+x.amount,0):f.required;
+    const paid=active?sets.reduce((a,x)=>a+x.paid,0):f.paid;
+    const unpaid=active?sets.reduce((a,x)=>a+x.remaining,0):f.unpaid;
+    const lastPay=(cache.payments||[]).filter(p=>p.type==="student_payment"&&p.studentId===s.id).sort((a,b)=>(b.at||0)-(a.at||0))[0];
+    return {s,f,sets,required,paid,unpaid,lastPay};
+  }).filter(r=>{
+    const {s,f,sets}=r;
+    if(q && !((s.name||"").toLowerCase().includes(q)||(s.phone||"").includes(q))) return false;
+    if(active && !sets.length) return false;
+    if(mode==="open") return sets.some(x=>x.remaining>0);
+    if(mode==="paid") return sets.some(x=>x.paid>0 && x.remaining<=0) || (!active&&f.paid>0);
+    return sets.length>0 || (!active&&(f.paid>0||f.required>0));
+  }).sort((a,b)=>b.unpaid-a.unpaid||b.f.dueSessions-a.f.dueSessions);
+
+  const list=rows.map(({s,f,sets,required,paid,unpaid,lastPay})=>{
+    const hasOpen=sets.some(x=>x.remaining>0&&x.isDue);
+    const lines=sets.map(x=>{
+      const late=x.remaining>0&&x.isDue;
+      const style=late?"color:var(--danger);font-weight:bold":(x.remaining<=0?"color:var(--success)":"");
+      let btns="";
+      if(can("collectStudent")){
+        if(x.remaining>0) btns+=`<button class="btn btn-success btn-sm" onclick="openStudentPay('${s.id}','${sanitize(x.key)}')">تسديد</button> `;
+        if(x.paid>0) btns+=`<button class="btn btn-outline btn-sm" onclick="editSettlementPay('${s.id}','${sanitize(x.key)}')">تعديل</button>`;
+      }
+      return `<div class="sess-day" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;${style}">
+        <span>${sanitize(x.label)} · ${money(x.amount)} · مدفوع ${money(x.paid)} · باقي ${money(x.remaining)} · استحقاق ${sanitize(x.dueDate)}${x.remaining<=0?" ✅":(x.isDue?" 🔴":"")}</span>
+        <span>${btns}</span></div>`;
+    }).join("")||`<p style="font-size:12px;color:var(--muted)">لا تسويات</p>`;
+    const loose=active?[]:studentPaymentsList(s).filter(p=>!p.settlementKey&&!p.settlementYm);
+    const looseHtml=loose.length?`<div style="margin-top:10px"><b>مدفوعات غير مربوطة بتسوية</b></div>`+loose.map(p=>`<div class="sess-day" style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span>${money(p.amount)} ج · ${sanitize(p.payDate||fmtDate(p.at))}${p.note?" · "+sanitize(p.note):""}</span>${can("collectStudent")?`<button class="btn btn-outline btn-sm" onclick="editPayment('${p.id}')">تعديل</button>`:""}</div>`).join(""):"";
+    return `<div class="list-item foldable ${hasOpen?"due":"ok"}" onclick="this.classList.toggle('open')">
+      <div style="flex:1;min-width:160px">
+        <div class="item-title">${sanitize(s.name)} <span class="expand-hint">— كل التسويات</span></div>
+        <div class="item-meta">مطلوب ${money(required)} · مدفوع ${money(paid)} · <b style="color:${unpaid>0?"var(--danger)":"var(--success)"}">${unpaid>0?"عليه "+money(unpaid)+" ج":"خالص"}</b>
+        ${lastPay?`<br>آخر استلام: ${sanitize(lastPay.payDate||fmtDate(lastPay.at))}`:""}</div>
+      </div>
+      <div class="item-actions" onclick="event.stopPropagation()">${waBtn(s.phone)}</div>
+      <div class="fold-body" onclick="event.stopPropagation()">
+        <div style="margin-bottom:8px"><b>كل التسويات (مدفوع / غير مدفوع)</b></div>
+        ${lines}${looseHtml}
+      </div>
+    </div>`;
+  }).join("")||`<div class="empty-state"><p>لا نتائج</p></div>`;
+
+  return `<div class="page-header"><h2>👨‍🎓 مستحقات الطلاب</h2></div>
+  <div class="search-bar"><input placeholder="بحث باسم الطالب أو الموبايل..." value="${sanitize(pageQ.studentDues||"")}" data-sk="studentDues" oninput="pageQ.studentDues=this.value;renderPage()"></div>
+  ${duesFilterHTML("student")}
+  <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+    <button class="btn ${mode==="all"?"btn-primary":"btn-outline"} btn-sm" onclick="pageQ.studentDuesMode='all';renderPage()">الكل</button>
+    <button class="btn ${mode==="open"?"btn-primary":"btn-outline"} btn-sm" onclick="pageQ.studentDuesMode='open';renderPage()">غير مسدد</button>
+    <button class="btn ${mode==="paid"?"btn-primary":"btn-outline"} btn-sm" onclick="pageQ.studentDuesMode='paid';renderPage()">مسدد</button>
+  </div>
+  <p style="font-size:12px;color:var(--muted);margin-bottom:10px">اضغط الطالب لعرض تسوياته · «تسديد» للتسوية غير المدفوعة و«تعديل» بعد السداد</p>
+  ${list}`;
+}
+
+function renderSettings(){
+  if(!(can("manageStaff")||profile?.role==="owner")) return `<div class="empty-state"><p>ليس لديك صلاحية</p></div>`;
+  const logo=centerMeta.logoData?`<img src="${centerMeta.logoData}" style="max-height:80px;border-radius:12px;margin-top:8px">`:"";
+  return `<div class="page-header"><h2>⚙️ إعدادات السنتر</h2></div>
+  <div class="card">
+    <div class="form-group"><label>اسم السنتر / التطبيق</label>
+      <input id="setName" value="${sanitize(centerMeta.name||"")}" placeholder="مثال: سنتر النور"></div>
+    <div class="form-group"><label>اللوجو (صورة)</label>
+      <input type="file" id="setLogo" accept="image/*" onchange="onLogoPick(event)">
+      <div id="logoPreview">${logo}</div>
+    </div>
+    <button class="btn btn-primary" onclick="saveCenterSettings()">حفظ الإعدادات</button>
+  </div>
+  <p style="font-size:12px;color:var(--muted);margin-top:12px">يظهر الاسم واللوجو في شاشة الدخول والرئيسية بدل «لوحة السنتر».</p>`;
+}
+function onLogoPick(ev){
+  const f=ev.target.files&&ev.target.files[0];
+  if(!f) return;
+  if(f.size>800*1024){toast("الصورة كبيرة — اختر أقل من 800KB","err");return}
+  const reader=new FileReader();
+  reader.onload=()=>{
+    centerMeta.logoData=reader.result;
+    const prev=$("logoPreview");
+    if(prev) prev.innerHTML=`<img src="${reader.result}" style="max-height:80px;border-radius:12px;margin-top:8px">`;
+  };
+  reader.readAsDataURL(f);
+}
+async function saveCenterSettings(){
+  if(!requirePerm("manageStaff")) return;
+  const name=($("setName")?.value||"").trim()||"بوابة السنتر";
+  centerMeta.name=name;
+  try{
+    showLoading("حفظ...");
+    await db.collection("center_meta").doc("config").set({
+      name:centerMeta.name,
+      logoData:centerMeta.logoData||"",
+      updatedAt:Date.now()
+    },{merge:true});
+    applyCenterBranding();
+    hideLoading();
+    toast("تم حفظ الإعدادات","ok");
+    renderPage();
+  }catch(e){hideLoading();toast(e.message,"err")}
+}
+
+let teacherShowArch=false;
+function renderTeacherSettle(){
+  if(!cache.teachers.length) return `<div class="page-header"><h2>💵 مستحقات المعلمين</h2></div><div class="empty-state"><p>لا معلمون</p></div>`;
+  const q=(pageQ.teacherSettle||"").trim().toLowerCase();
+  const mode=pageQ.teacherMode||"all"; // all | open | done
+  const sorted=[...cache.teachers].filter(t=>!isPaused(t)).map(t=>({t,sc:teacherDueScore(t)}))
+    .filter(x=>{
+      if(q && !(x.t.name||"").toLowerCase().includes(q)) return false;
+      return true; // كل المعلمين
+    }).sort((a,b)=>b.sc.score-a.sc.score||b.sc.dueAmount-a.sc.dueAmount);
+
+  let html=`<div class="page-header"><h2>💵 مستحقات المعلمين</h2></div>
+  <div class="search-bar"><input placeholder="بحث باسم المعلم..." value="${sanitize(pageQ.teacherSettle||"")}" data-sk="teacherSettle" oninput="pageQ.teacherSettle=this.value;renderPage()"></div>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+    <button class="btn ${mode==="all"?"btn-primary":"btn-outline"} btn-sm" onclick="pageQ.teacherMode='all';teacherShowArch=true;renderPage()">الكل</button>
+    <button class="btn ${mode==="open"?"btn-primary":"btn-outline"} btn-sm" onclick="pageQ.teacherMode='open';teacherShowArch=false;renderPage()">جارية</button>
+    <button class="btn ${mode==="done"?"btn-primary":"btn-outline"} btn-sm" onclick="pageQ.teacherMode='done';teacherShowArch=true;renderPage()">منتهية</button>
+  </div>
+  ${duesFilterHTML("teacher")}
+  <p style="font-size:12px;color:var(--muted);margin-bottom:12px">كل الدورات والمدفوعات · أحمر عند اكتمال الدورة مع متبقي فقط</p>`;
+
+  let any=false;
+  sorted.forEach(({t,sc})=>{
+    const groups=cache.groups.filter(g=>(g.teacherIds||[]).includes(t.id));
+    let block="";
+    groups.forEach(g=>{
+      let cycles=buildTeacherCycles(t,g.id);
+      if(mode==="open") cycles=cycles.filter(cy=>!cy.closed);
+      else if(mode==="done") cycles=cycles.filter(cy=>cy.closed || (cy.remaining<=0&&cy.paid>0));
+      if(duesFilterActive("teacher")) cycles=cycles.filter(cy=>cycleInDues(t,g,cy));
+      if(!cycles.length) return;
+      cycles.sort((a,b)=>b.cycleIndex-a.cycleIndex);
+      block+=`<div style="margin:10px 0 6px;font-size:13px;font-weight:bold;color:var(--primary-dark)">📚 ${sanitize(g.name)}</div>`;
+      cycles.forEach(cy=>{
+        const cls=(cy.full&&cy.remaining>0)?"due":((cy.remaining<=0&&cy.paid>0)?"ok":"");
+        const daysHtml=cy.sessionDetails.map(d=>`<div class="sess-day">${d.n}) ${sanitize(d.date)}${d.time?" · "+sanitize(d.time):""} · حاضر ${d.present}${d.absent?` · غائب ${d.absent}`:""} · ${money(d.amount)} ج</div>`).join("");
+        const pays=(cache.payments||[]).filter(p=>p.type==="teacher_payment"&&p.teacherId===t.id&&p.groupId===g.id&&Number(p.cycleIndex)===cy.cycleIndex);
+        const payHtml=pays.map(p=>`<div class="sess-day">دفع ${money(p.amount)} · ${sanitize(p.payDate||fmtDate(p.at))}${p.note?" · "+sanitize(p.note):""}
+          ${can("payTeacher")?` <button class="btn btn-outline btn-sm" onclick="editPayment('${p.id}')">تعديل</button>`:""}
+        </div>`).join("");
+        block+=`<div class="cycle-row ${cls}" onclick="this.classList.toggle('open')">
+          <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;align-items:center">
+            <div><b>تسوية ${cy.cycleNum}</b>
+              ${cy.full?`<span class="chip ${cy.remaining>0?"red":""}">${cy.sessions}/${cy.cycleSize}</span>`:`<span class="chip">${cy.sessions}/${cy.cycleSize}</span>`}
+              ${cy.closed?`<span class="chip">منتهية</span>`:""}
+              <span class="expand-hint">— اضغط للتفاصيل</span>
+              <div class="item-meta">المبلغ: ${money(cy.amount)} ج · مدفوع: ${money(cy.paid)} ج
+                ${cy.remaining>0?` · <b style="color:var(--danger)">باقي ${money(cy.remaining)}</b>`:" · خالص"}
+                ${cy.lastPayDate?`<br>تاريخ التسديد: <b>${sanitize(cy.lastPayDate)}</b>`:""}</div></div>
+            <div class="item-actions" onclick="event.stopPropagation()">
+              ${can("payTeacher")&&cy.amount>0&&cy.remaining>0?`<button class="btn btn-success btn-sm" onclick="openTeacherPay('${t.id}','${g.id}',${cy.cycleIndex},${cy.remaining})">تسديد</button>`:""}
+              ${can("payTeacher")&&pays.length?`<button class="btn btn-outline btn-sm" onclick="editTeacherCyclePay('${t.id}','${g.id}',${cy.cycleIndex})">تعديل</button>`:""}
+              ${can("payTeacher")&&!cy.closed?`<button class="btn btn-outline btn-sm" onclick="closeCycle('${t.id}','${g.id}',${cy.cycleIndex})">إنهاء التسوية</button>`:""}
+            </div>
+          </div>
+          <div class="cycle-body" onclick="event.stopPropagation()">
+            <div style="font-size:12px;font-weight:bold;margin-bottom:6px;color:var(--primary)">أيام الجلسات</div>${daysHtml||"<p style='font-size:12px'>—</p>"}
+            <div style="font-size:12px;font-weight:bold;margin:10px 0 6px;color:var(--primary)">المدفوعات</div>${payHtml||"<p style='font-size:12px;color:var(--muted)'>لا مدفوعات</p>"}
+          </div></div>`;
+      });
+    });
+    if(!block) return;
+    any=true;
+    html+=`<div class="card"><div class="card-title">👨‍🏫 ${sanitize(t.name)}
+      ${sc.fullPending?`<span class="chip red">${sc.fullPending} واجبة</span>`:""}
+      <span class="chip">${(t.billingCycle==="monthly")?"شهري":"كل "+(t.sessionsPerCycle||8)+" حصة"}</span></div>${block}</div>`;
+  });
+  if(!any) html+=`<div class="empty-state"><p>لا تسويات للمعلمين بعد</p></div>`;
+  return html;
+}
+
+function renderArchive(){
+  const q=($("archQ")?.value||"").trim().toLowerCase();
+  let html=`<div class="page-header"><h2>📂 أرشيف التسويات</h2></div>
+  <div class="search-bar"><input id="archQ" data-sk="archQ" placeholder="ابحث باسم طالب أو معلم..." value="${sanitize(q)}" oninput="renderPage()"></div>
+  <p style="font-size:12px;color:var(--muted);margin-bottom:12px">كل التسويات (جارية + منتهية). ابحث لتظهر كل سجلّات الشخص.</p>`;
+  cache.teachers.filter(t=>!q||(t.name||"").toLowerCase().includes(q)).forEach(t=>{
+    const groups=cache.groups.filter(g=>(g.teacherIds||[]).includes(t.id));
+    let block="";
+    groups.forEach(g=>{
+      const cycles=buildTeacherCycles(t,g.id);
+      if(!cycles.length) return;
+      block+=`<div style="margin:8px 0 4px;font-size:13px;font-weight:bold">📚 ${sanitize(g.name)}</div>`;
+      cycles.forEach(cy=>{
+        const cls=cy.closed?"closed":(cy.full&&cy.remaining>0?"due":"");
+        const days=cy.sessionDetails.map(d=>`<div class="sess-day">${d.n}) ${sanitize(d.date)}${d.time?" · "+sanitize(d.time):""}</div>`).join("");
+        block+=`<div class="cycle-row ${cls}" onclick="this.classList.toggle('open')">
+          <b>تسوية ${cy.cycleNum}</b> ${cy.sessions}/${cy.cycleSize} ${cy.closed?`<span class="chip green">منتهية</span>`:""}
+          <div class="item-meta">${money(cy.amount)} ج · مدفوع ${money(cy.paid)}${cy.lastPayDate?" · "+sanitize(cy.lastPayDate):""}${cy.lastPayNote?" · "+sanitize(cy.lastPayNote):""}</div>
+          <div class="cycle-body">${days}</div></div>`;
+      });
+    });
+    if(block||q) html+=`<div class="card"><div class="card-title">👨‍🏫 ${sanitize(t.name)} ${isPaused(t)?'<span class="chip red">موقوف</span>':""}</div>${block||"<p style='font-size:12px;color:var(--muted)'>لا تسويات</p>"}</div>`;
+  });
+  cache.students.filter(s=>!q||(s.name||"").toLowerCase().includes(q)).forEach(s=>{
+    const f=studentFinance(s);
+    const pays=(cache.payments||[]).filter(p=>p.type==="student_payment"&&p.studentId===s.id);
+    if(!q&&f.unpaid<=0&&!pays.length) return;
+    let sess="";
+    (s.enrollments||[]).forEach(e=>{
+      const g=cache.groups.find(x=>x.id===e.groupId);
+      const days=studentBillableSessions(s,e);
+      if(!days.length) return;
+      sess+=`<div style="margin:6px 0"><b>${sanitize(g?.name||"")}</b></div>`;
+      days.forEach((d,i)=>{sess+=`<div class="sess-day">${i+1}) ${sanitize(d.date)}</div>`});
+    });
+    const payLines=pays.map(p=>`<div class="sess-day">استلام ${money(p.amount)} ج · ${sanitize(p.payDate||fmtDate(p.at))}${p.note?" · "+sanitize(p.note):""}</div>`).join("");
+    html+=`<div class="card list-item foldable ${f.unpaid>0?"due":"ok"}" onclick="this.classList.toggle('open')">
+      <div style="flex:1"><div class="item-title">👨‍🎓 ${sanitize(s.name)} ${isPaused(s)?'<span class="chip red">موقوف</span>':""}</div>
+      <div class="item-meta">مطلوب ${money(f.required)} · مدفوع ${money(f.paid)} · ${f.unpaid>0?`<b style="color:var(--danger)">باقي ${money(f.unpaid)}</b>`:`<span class="chip green">خالص / منتهٍ</span>`}</div></div>
+      <div class="fold-body" onclick="event.stopPropagation()">
+        <div style="font-weight:bold;font-size:12px;margin-bottom:6px">الحصص</div>${sess||"<p style='font-size:12px;color:var(--muted)'>لا حصص</p>"}
+        <div style="font-weight:bold;font-size:12px;margin:10px 0 6px">عمليات الاستلام</div>${payLines||"<p style='font-size:12px;color:var(--muted)'>لا استلامات</p>"}
+      </div></div>`;
+  });
+  return html;
+}
+
+function openTeacherPay(teacherId,groupId,cycleIndex,suggested){
+  if(!requirePerm("payTeacher")) return;
+  const t=cache.teachers.find(x=>x.id===teacherId);
+  const g=cache.groups.find(x=>x.id===groupId);
+  openModal("تسديد مستحقات — "+(t?.name||""),`
+    <p style="font-size:13px;margin-bottom:10px">المجموعة: <b>${sanitize(g?.name||"")}</b> · تسوية رقم ${cycleIndex+1}</p>
+    <div class="form-group"><label>المبلغ (ج) *</label><input type="number" id="tpAmt" min="0" value="${Number(suggested)||0}"></div>
+    <div class="form-group"><label>تاريخ التسديد *</label><input type="date" id="tpDate" value="${todayISO()}"></div>
+    <div class="form-group"><label>ملاحظة</label><input id="tpNote" placeholder="تسديد دورة 8 حصص..."></div>
+  `,`<button class="btn btn-outline btn-sm" onclick="closeModal()">إلغاء</button>
+    <button class="btn btn-success btn-sm" onclick="saveTeacherPay('${teacherId}','${groupId}',${cycleIndex})">حفظ التسديد</button>`);
+}
+async function saveTeacherPay(teacherId,groupId,cycleIndex){
+  if(!requirePerm("payTeacher")) return;
+  const amount=Number($("tpAmt").value)||0;
+  const payDate=$("tpDate").value||todayISO();
+  if(amount<=0){toast("أدخل مبلغاً","err");return}
+  const t=cache.teachers.find(x=>x.id===teacherId);
+  const g=cache.groups.find(x=>x.id===groupId);
+  try{
+    await db.collection("center_payments").add({type:"teacher_payment",teacherId,groupId,cycleIndex,teacherName:t?.name||"",groupName:g?.name||"",amount,payDate,note:$("tpNote").value.trim(),at:Date.now(),by:currentUser.uid});
+    closeModal();toast("تم تسجيل الدفع","ok");
+  }catch(e){toast(e.message,"err")}
+}
+async function closeCycle(teacherId,groupId,cycleIndex){
+  if(!requirePerm("payTeacher")) return;
+  if(!confirm("إنهاء التسوية وإخفاؤها من الملخص الخارجي؟")) return;
+  const t=cache.teachers.find(x=>x.id===teacherId);
+  const closed={...(t.closedCycles||{})};
+  if(!closed[groupId]) closed[groupId]={};
+  closed[groupId][cycleIndex]=true;
+  try{await db.collection("center_teachers").doc(teacherId).update({closedCycles:closed,updatedAt:Date.now()});toast("تم إنهاء التسوية","ok")}
+  catch(e){toast(e.message,"err")}
+}
+
+function renderGroups(){
+  const f=listFilter.groups||"all";
+  let items=cache.groups.slice();
+  const withStu=cache.groups.filter(g=>cache.students.some(s=>(s.enrollments||[]).some(e=>e.groupId===g.id)));
+  const empty=cache.groups.filter(g=>!cache.students.some(s=>(s.enrollments||[]).some(e=>e.groupId===g.id)));
+  if(f==="with") items=withStu.slice();
+  else if(f==="empty") items=empty.slice();
+  const q=(pageQ.groups||"").trim().toLowerCase();
+  if(q) items=items.filter(g=>{
+    const te=cache.teachers.find(x=>(g.teacherIds||[]).includes(x.id));
+    return ((g.name||"")+" "+(te?.name||"")).toLowerCase().includes(q);
+  });
+  const list=items.map(g=>{
+    const te=cache.teachers.find(x=>(g.teacherIds||[])[0]===x.id||(g.teacherIds||[]).includes(x.id));
+    const sts=cache.students.filter(s=>(s.enrollments||[]).some(e=>e.groupId===g.id));
+    return `<div class="list-item"><div>
+      <div class="item-title">🔗 ${sanitize(g.name)}</div>
+      <div class="item-meta">المعلم: ${sanitize(te?.name||"—")}<br>الطلاب: ${sts.map(s=>s.name).join("، ")||"—"}</div></div>
+      <div class="item-actions">
+        ${can("manageGroups")?`<button class="btn btn-outline btn-sm" onclick="openGroupForm('${g.id}')">تعديل</button>`:""}
+        ${can("deleteData")?`<button class="btn btn-danger btn-sm" onclick="deleteGroup('${g.id}')">حذف</button>`:""}
+      </div></div>`;
+  }).join("")||`<div class="empty-state"><p>لا نتائج لهذا الفلتر</p></div>`;
+  return `<div class="page-header"><h2>🔗 المجموعات (الربط)</h2>
+    ${can("manageGroups")?`<button class="btn btn-primary btn-sm" onclick="openGroupForm()">+ مجموعة</button>`:""}</div>
+  <div class="search-bar"><input placeholder="بحث باسم المجموعة أو المعلم..." value="${sanitize(pageQ.groups||"")}" data-sk="groups" oninput="pageQ.groups=this.value;renderPage()"></div>
+  <div class="filter-tabs">
+    <div class="stat-card ${f==="all"?"active-filter":""}" onclick="setListFilter('groups','all')"><div class="stat-num">${cache.groups.length}</div><div class="stat-label">الكل</div></div>
+    <div class="stat-card success ${f==="with"?"active-filter":""}" onclick="setListFilter('groups','with')"><div class="stat-num">${withStu.length}</div><div class="stat-label">بها طلاب</div></div>
+    <div class="stat-card warn ${f==="empty"?"active-filter":""}" onclick="setListFilter('groups','empty')"><div class="stat-num">${empty.length}</div><div class="stat-label">بدون طلاب</div></div>
+  </div>
+  <p style="font-size:12px;color:var(--muted);margin-bottom:10px">اسحب الشاشة للأسفل للتحديث · اضغط الكرت للتصفية</p>
+  ${list}`;
+}
+function openGroupForm(id){
+  if(!requirePerm("manageGroups")) return;
+  const g=id?cache.groups.find(x=>x.id===id):null;
+  const tOpts=cache.teachers.filter(t=>!isPaused(t)||(g?.teacherIds||[]).includes(t.id))
+    .map(t=>`<option value="${t.id}" ${(g?.teacherIds||[])[0]===t.id?"selected":""}>${sanitize(t.name)}${isPaused(t)?" (موقوف)":""}</option>`).join("");
+  openModal(g?"تعديل مجموعة":"مجموعة جديدة",`
+    <div class="form-group"><label>اسم المجموعة *</label><input id="gName" value="${sanitize(g?.name||"")}"></div>
+    <div class="form-group"><label>المعلم *</label><select id="gTeacher"><option value="">—</option>${tOpts}</select></div>
+    <div class="form-group"><label>المادة</label><input id="gSubject" value="${sanitize(g?.subject||"تحفيظ")}"></div>
+  `,`<button class="btn btn-outline btn-sm" onclick="closeModal()">إلغاء</button>
+    <button class="btn btn-primary btn-sm" onclick="saveGroup('${id||""}')">حفظ</button>`);
+}
+async function saveGroup(id){
+  if(!requirePerm("manageGroups")) return;
+  const name=$("gName").value.trim(),teacherId=$("gTeacher").value;
+  if(!name||!teacherId){toast("الاسم والمعلم مطلوبان","err");return}
+  const t=cache.teachers.find(x=>x.id===teacherId);
+  if(isPaused(t)){toast("المعلم موقوف","err");return}
+  const data={name,subject:$("gSubject").value.trim()||"تحفيظ",teacherIds:[teacherId],updatedAt:Date.now()};
+  try{
+    if(id) await db.collection("center_groups").doc(id).update(data);
+    else await db.collection("center_groups").add({...data,createdAt:Date.now()});
+    closeModal();toast("تم","ok");
+  }catch(e){toast(e.message,"err")}
+}
+async function deleteGroup(id){
+  if(!requirePerm("deleteData")) return;
+  if(!confirm("حذف؟")) return;
+  try{await db.collection("center_groups").doc(id).delete();toast("تم","ok")}catch(e){toast(e.message,"err")}
+}
+
+function renderTeachers(){
+  const f=listFilter.teachers||"all";
+  const active=cache.teachers.filter(x=>!isPaused(x));
+  const paused=cache.teachers.filter(x=>isPaused(x));
+  let items=cache.teachers.slice();
+  if(f==="active") items=active;
+  else if(f==="paused") items=paused;
+  const q=(pageQ.teachers||"").trim().toLowerCase();
+  if(q) items=items.filter(te=>((te.name||"")+" "+(te.phone||"")).toLowerCase().includes(q));
+  const list=items.map(te=>{
+    const cycle=(te.billingCycle==="monthly")?`شهري ${money(te.monthlySalary||0)} ج`:`كل ${te.sessionsPerCycle||8} حصص`;
+    const pay=(te.payMode==="per_student")?`${money(te.ratePerStudent||0)}/طالب`:`${money(te.ratePerSession||0)}/جلسة`;
+    return `<div class="list-item ${isPaused(te)?"closed":""}"><div>
+      <div class="item-title">${sanitize(te.name)} ${isPaused(te)?'<span class="chip red">موقوف</span>':""}</div>
+      <div class="item-meta">${sanitize(te.phone||"")} · ${cycle} · ${pay}${isPaused(te)&&te.pauseRemindAt?`<br>تذكير: ${sanitize(te.pauseRemindAt)}`:""}</div></div>
+      <div class="item-actions">
+        ${can("addTeacher")?`<button class="btn btn-outline btn-sm" onclick="openTeacherForm('${te.id}')">تعديل</button>`:""}
+        ${can("addTeacher")?`<button class="btn ${isPaused(te)?"btn-success":"btn-danger"} btn-sm" onclick="togglePause('teacher','${te.id}')">${isPaused(te)?"تفعيل":"إيقاف"}</button>`:""}
+      </div></div>`;
+  }).join("")||`<div class="empty-state"><p>لا نتائج لهذا الفلتر</p></div>`;
+  return `<div class="page-header"><h2>👨‍🏫 المعلمون</h2>
+    ${can("addTeacher")?`<button class="btn btn-primary btn-sm" onclick="openTeacherForm()">+ معلم</button>`:""}</div>
+  <div class="search-bar"><input placeholder="بحث باسم المعلم أو الموبايل..." value="${sanitize(pageQ.teachers||"")}" data-sk="teachers" oninput="pageQ.teachers=this.value;renderPage()"></div>
+  <div class="filter-tabs">
+    <div class="stat-card ${f==="all"?"active-filter":""}" onclick="setListFilter('teachers','all')"><div class="stat-num">${cache.teachers.length}</div><div class="stat-label">الكل</div></div>
+    <div class="stat-card success ${f==="active"?"active-filter":""}" onclick="setListFilter('teachers','active')"><div class="stat-num">${active.length}</div><div class="stat-label">مفعّل</div></div>
+    <div class="stat-card danger ${f==="paused"?"active-filter":""}" onclick="setListFilter('teachers','paused')"><div class="stat-num">${paused.length}</div><div class="stat-label">متوقف</div></div>
+  </div>
+  <p style="font-size:12px;color:var(--muted);margin-bottom:10px">اسحب للأسفل للتحديث · اضغط الكرت لعرض الفئة فقط</p>
+  ${list}`;
+}
+
+function openTeacherForm(id){
+  if(!requirePerm("addTeacher")) return;
+  const t=id?cache.teachers.find(x=>x.id===id):null;
+  const billing=t?.billingCycle||"session",mode=t?.payMode||"fixed";
+  openModal(t?"تعديل معلم":"معلم جديد",`
+    <div class="form-grid two">
+      <div class="form-group"><label>الاسم *</label><input id="tName" value="${sanitize(t?.name||"")}"></div>
+      <div class="form-group"><label>موبايل</label><input id="tPhone" value="${sanitize(t?.phone||"")}"></div>
+      <div class="form-group" style="grid-column:1/-1"><label>نظام الحساب *</label>
+        <select id="tBilling" onchange="onTBilling()">
+          <option value="session" ${billing==="session"?"selected":""}>بالحصة (دورة كل عدد حصص)</option>
+          <option value="monthly" ${billing==="monthly"?"selected":""}>بالشهر</option>
+        </select></div>
+      <div class="form-group" id="tCycleBox"><label>عدد حصص الدورة *</label>
+        <input type="number" id="tCycle" min="1" value="${t?.sessionsPerCycle??8}"></div>
+      <div class="form-group hide" id="tSalBox"><label>راتب شهري</label>
+        <input type="number" id="tSal" min="0" value="${t?.monthlySalary??0}"></div>
+      <div class="form-group" style="grid-column:1/-1"><label>أجر الجلسة</label>
+        <select id="tPayMode" onchange="onTPayMode()">
+          <option value="fixed" ${mode==="fixed"?"selected":""}>ثابت لكل جلسة</option>
+          <option value="per_student" ${mode==="per_student"?"selected":""}>× عدد الحاضرين</option>
+        </select></div>
+      <div class="form-group" id="tFixedBox"><label>مبلغ الجلسة</label>
+        <input type="number" id="tRate" min="0" value="${t?.ratePerSession??50}"></div>
+      <div class="form-group hide" id="tStuBox"><label>مبلغ لكل طالب حاضر</label>
+        <input type="number" id="tRateStu" min="0" value="${t?.ratePerStudent??20}"></div>
+      ${!t?`
+      <div class="form-group" style="grid-column:1/-1;border-top:1px dashed var(--border);padding-top:10px;margin-top:4px">
+        <label class="check-row"><input type="checkbox" id="tCreateAcc" checked onchange="document.getElementById('tAccBox').classList.toggle('hide',!this.checked)"><span><b>إنشاء حساب دخول (الموبايل = اسم المستخدم)</b></span></label>
+      </div>
+      <div id="tAccBox" class="form-grid two" style="grid-column:1/-1">
+        <div class="form-group"><label>كلمة المرور</label>
+          <input id="tPass" type="text" placeholder="افتراضي = رقم الموبايل" autocomplete="new-password"></div>
+        <div class="form-group"><label class="check-row" style="margin-top:22px"><input type="checkbox" id="tSendWa" checked><span>إرسال واتساب ببيانات الدخول</span></label></div>
+      </div>`:""}
+    </div>
+  `,`<button class="btn btn-outline btn-sm" onclick="closeModal()">إلغاء</button>
+    <button class="btn btn-primary btn-sm" onclick="saveTeacher('${id||""}')">حفظ</button>`);
+  onTBilling();onTPayMode();
+}
+function onTBilling(){const b=$("tBilling")?.value;$("tCycleBox")?.classList.toggle("hide",b==="monthly");$("tSalBox")?.classList.toggle("hide",b!=="monthly")}
+function onTPayMode(){const m=$("tPayMode")?.value;$("tFixedBox")?.classList.toggle("hide",m==="per_student");$("tStuBox")?.classList.toggle("hide",m!=="per_student")}
+async function saveTeacher(id){
+  if(!requirePerm("addTeacher")) return;
+  const name=$("tName").value.trim();
+  if(!name){toast("الاسم مطلوب","err");return}
+  const data={name,phone:$("tPhone").value.trim(),billingCycle:$("tBilling").value,sessionsPerCycle:Math.max(1,Number($("tCycle")?.value)||8),monthlySalary:Number($("tSal")?.value)||0,payMode:$("tPayMode").value,ratePerSession:Number($("tRate")?.value)||0,ratePerStudent:Number($("tRateStu")?.value)||0,active:true,updatedAt:Date.now()};
+  try{
+    showLoading("جاري الحفظ...");
+    let acc=null;
+    if(!id && $("tCreateAcc")?.checked){
+      acc=await createPortalAccount("teacher",name,data.phone,($("tPass")?.value||"").trim());
+      data.authUid=acc.uid;
+      data.hasLogin=true;
+      data.loginPhone=acc.phone;
+    }
+    if(id) await db.collection("center_teachers").doc(id).update(data);
+    else {
+      const ref=await db.collection("center_teachers").add({...data,closedCycles:{},createdAt:Date.now()});
+      if(acc){
+        try{ await db.collection("center_users").doc(acc.uid).update({linkedId:ref.id,linkedType:"teacher"}); }catch(e){}
+      }
+    }
+    closeModal();
+    toast(acc?"تم حفظ المعلم وإنشاء الحساب":"تم","ok");
+    if(acc && $("tSendWa")?.checked!==false){
+      setTimeout(()=>offerWhatsAppCreds("teacher",name,acc.phone,acc.password),400);
+    }
+  }catch(e){toast(e.message||e,"err")}
+  hideLoading();
+}
+
+function renderStudentsManage(){
+  const f=listFilter.students||"all";
+  const active=cache.students.filter(x=>!isPaused(x));
+  const paused=cache.students.filter(x=>isPaused(x));
+  let source=cache.students;
+  if(f==="active") source=active;
+  else if(f==="paused") source=paused;
+  const q=(pageQ.students||"").trim().toLowerCase();
+  if(q) source=source.filter(s=>((s.name||"")+" "+(s.phone||"")+" "+(s.parentName||"")).toLowerCase().includes(q));
+  const list=source.map(s=>{
+    const ens=(s.enrollments||[]).map(e=>{
+      const g=cache.groups.find(x=>x.id===e.groupId);
+      if(e.type==="monthly") return `<span class="chip">شهري ${money(e.monthlyPrice||0)} · ${sanitize(g?.name||"")}</span>`;
+      return `<span class="chip">${e.packageSessions?`${e.packageSessions} حصة بـ ${money(e.packageTotal||((e.sessionRate||0)*(e.packageSessions||0)))} (${money(e.sessionRate||0)}/حصة)`:`${money(e.sessionRate||0)} ج/حصة`} · ${sanitize(g?.name||"")}</span>`;
+    }).join(" ")||`<span class="chip yellow">بدون حساب/مجموعة</span>`;
+    return `<div class="list-item ${isPaused(s)?"closed":""}">
+      <div style="flex:1;min-width:140px">
+        <div class="item-title">${sanitize(s.name)} ${isPaused(s)?'<span class="chip red">موقوف</span>':""}</div>
+        <div class="item-meta">${sanitize(s.phone||"—")} · ولي الأمر: ${sanitize(s.parentName||"—")}<br>${ens}
+        ${isPaused(s)&&s.pauseRemindAt?`<br>تذكير: ${sanitize(s.pauseRemindAt)}`:""}</div>
+      </div>
+      <div class="item-actions">
+        ${waBtn(s.phone)}
+        ${can("addStudent")?`<button class="btn btn-outline btn-sm" onclick="openStudentForm('${s.id}')">تعديل</button>`:""}
+        ${can("addStudent")&&!isPaused(s)?`<button class="btn btn-primary btn-sm" onclick="openEnroll('${s.id}')">ربط مجموعة</button>`:""}
+        ${can("addStudent")?`<button class="btn ${isPaused(s)?"btn-success":"btn-danger"} btn-sm" onclick="togglePause('student','${s.id}')">${isPaused(s)?"تفعيل":"إيقاف"}</button>`:""}
+      </div>
+    </div>`;
+  }).join("")||`<div class="empty-state"><p>لا نتائج لهذا الفلتر</p></div>`;
+  return `<div class="page-header"><h2>إضافة / تعديل طالب</h2>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">
+      ${can("addStudent")?`<button class="btn btn-primary btn-sm" onclick="openStudentForm()">+ طالب</button>`:""}
+      ${can("addStudent")?`<button class="btn btn-outline btn-sm" onclick="downloadStudentsTemplate()">📥 قالب إكسل</button>`:""}
+      ${can("addStudent")?`<button class="btn btn-success btn-sm" onclick="triggerStudentsImport()">📤 رفع مجمّع</button>`:""}
+      <input type="file" id="stuImportFile" accept=".xlsx,.xls,.csv" class="hide" onchange="importStudentsExcel(event)">
+    </div>
+  </div>
+  <div class="filter-tabs">
+    <div class="stat-card ${f==="all"?"active-filter":""}" onclick="setListFilter('students','all')"><div class="stat-num">${cache.students.length}</div><div class="stat-label">الكل</div></div>
+    <div class="stat-card success ${f==="active"?"active-filter":""}" onclick="setListFilter('students','active')"><div class="stat-num">${active.length}</div><div class="stat-label">مفعّل</div></div>
+    <div class="stat-card danger ${f==="paused"?"active-filter":""}" onclick="setListFilter('students','paused')"><div class="stat-num">${paused.length}</div><div class="stat-label">متوقف</div></div>
+  </div>
+  <div class="search-bar"><input placeholder="بحث ذكي: اسم / موبايل / ولي أمر..." value="${sanitize(pageQ.students||"")}" data-sk="students" oninput="pageQ.students=this.value;renderPage()"></div>
+  <p style="font-size:12px;color:var(--muted);margin-bottom:10px">اسحب للأسفل للتحديث · اضغط الكرت لعرض الفئة فقط</p>
+  ${list}
+  <div class="card" style="margin-top:16px">
+    <div class="card-title">📂 أرشيف الطلاب (خالص / بدون مستحق ظاهر)</div>
+    ${cache.students.filter(s=>{const f=studentFinance(s);return !f.showDue && f.paid>0;}).map(s=>{
+      const f=studentFinance(s);
+      return `<div class="list-item ok"><div class="item-title">${sanitize(s.name)}</div>
+        <div class="item-meta">مدفوع ${money(f.paid)} · مطلوب ${money(f.required)}</div></div>`;
+    }).join("")||`<p style="font-size:12px;color:var(--muted)">لا سجلات</p>`}
+  </div>`;
+}
+function openStudentForm(id){
+  if(!requirePerm("addStudent")) return;
+  const s=id?cache.students.find(x=>x.id===id):null;
+  const en=(s?.enrollments||[])[0]||null;
+  const gOpts=cache.groups.map(g=>{
+    const t=cache.teachers.find(x=>(g.teacherIds||[]).includes(x.id));
+    if(t&&isPaused(t)&&(!en||en.groupId!==g.id)) return "";
+    const sel=en&&en.groupId===g.id?"selected":"";
+    return `<option value="${g.id}" ${sel}>${sanitize(g.name)} — ${sanitize(t?.name||"")}</option>`;
+  }).filter(Boolean).join("");
+  const type=en?.type||"monthly";
+  const defPackCnt=Number(en?.packageSessions)||8;
+  const defPackTotal=(en?.packageTotal!=null && en?.packageTotal!=="") ? Number(en.packageTotal) : ((Number(en?.sessionRate)||0)*defPackCnt || 400);
+  const defRate=Number(en?.sessionRate)||Math.round((defPackTotal/defPackCnt)*100)/100||50;
+  openModal(s?"تعديل طالب":"طالب جديد",`
+    <div class="form-grid two">
+      <div class="form-group"><label>اسم الطالب *</label><input id="sName" value="${sanitize(s?.name||"")}"></div>
+      <div class="form-group"><label>موبايل</label><input id="sPhone" value="${sanitize(s?.phone||"")}"></div>
+      <div class="form-group" style="grid-column:1/-1"><label>ولي الأمر</label><input id="sParent" value="${sanitize(s?.parentName||"")}"></div>
+      <div class="form-group" style="grid-column:1/-1"><label>المجموعة (الربط)</label>
+        <select id="sGroup"><option value="">— بدون ربط الآن —</option>${gOpts}</select>
+      </div>
+      <div class="form-group"><label>طريقة الحساب</label>
+        <select id="sBillType" onchange="onSBillType()">
+          <option value="session" ${type==="session"?"selected":""}>بالحصة</option>
+          <option value="monthly" ${type==="monthly"?"selected":""}>بالشهر</option>
+        </select>
+      </div>
+      <div class="form-group" id="sPackTotalBox"><label>إجمالي مبلغ الباقة (ج)</label>
+        <input type="number" id="sPackTotal" min="0" value="${defPackTotal}" oninput="calcStudentSessionRate()"></div>
+      <div class="form-group" id="sPackCntBox"><label>عدد حصص الباقة</label>
+        <input type="number" id="sPackCnt" min="1" value="${defPackCnt}" oninput="calcStudentSessionRate()"></div>
+      <div class="form-group" id="sRateBox"><label>سعر الحصة (محسوب تلقائياً)</label>
+        <input type="number" id="sRate" min="0" value="${defRate}" readonly style="background:#f0f4f8">
+        <p id="sRateHint" style="font-size:11px;color:var(--muted);margin-top:4px">الإجمالي ÷ عدد الحصص</p></div>
+      <div class="form-group hide" id="sMonthBox"><label>قيمة الشهر (ج)</label>
+        <input type="number" id="sMonth" min="0" value="${en?.monthlyPrice??200}"></div>
+      <div class="form-group hide" id="sStartBox"><label>بداية الاشتراك الشهري</label>
+        <input type="date" id="sStart" value="${sanitize(en?.startDate||todayISO())}"></div>
+      <div class="form-group"><label>الدفع</label>
+        <select id="sPayTiming">
+          <option value="advance" ${(en?.payTiming||"advance")==="advance"?"selected":""}>مقدَّم — في يوم الدفع خلال نفس الشهر (المفضّل)</option>
+          <option value="defer" ${en?.payTiming==="defer"?"selected":""}>مؤخَّر — بعد انتهاء الشهر (يوم الدفع من الشهر التالي)</option>
+        </select>
+      </div>
+      <div class="form-group"><label>يوم الدفع من الشهر (1–28)</label>
+        <input type="number" id="sPayDay" min="1" max="28" value="${en?.payDay??5}">
+        <p style="font-size:11px;color:var(--muted);margin-top:4px">1–28 فقط (مناسب لفبراير). مؤخَّر: تسوية أكتوبر تظهر يوم الدفع من نوفمبر.</p>
+      </div>
+      <div class="form-group" style="grid-column:1/-1">
+        <label class="check-row"><input type="checkbox" id="sAbs" ${en?.chargeOnAbsence?"checked":""}><span>محاسبة الغياب على الطالب</span></label>
+      </div>
+      ${!s?`
+      <div class="form-group" style="grid-column:1/-1;border-top:1px dashed var(--border);padding-top:10px;margin-top:4px">
+        <label class="check-row"><input type="checkbox" id="sCreateAcc" checked onchange="document.getElementById('sAccBox').classList.toggle('hide',!this.checked)"><span><b>إنشاء حساب دخول (الموبايل = اسم المستخدم)</b></span></label>
+      </div>
+      <div id="sAccBox" class="form-grid two" style="grid-column:1/-1">
+        <div class="form-group"><label>كلمة المرور</label>
+          <input id="sPass" type="text" placeholder="افتراضي = رقم الموبايل" autocomplete="new-password">
+          <p style="font-size:11px;color:var(--muted);margin-top:4px">إن تُركت فارغة يُستخدم رقم الموبايل</p></div>
+        <div class="form-group"><label class="check-row" style="margin-top:22px"><input type="checkbox" id="sSendWa" checked><span>إرسال رسالة واتساب ببيانات الدخول</span></label></div>
+      </div>`:""}
+    </div>
+  `,`<button class="btn btn-outline btn-sm" onclick="closeModal()">إلغاء</button>
+    <button class="btn btn-primary btn-sm" onclick="saveStudent('${id||""}')">حفظ</button>`);
+  onSBillType();
+  calcStudentSessionRate();
+}
+function onSBillType(){
+  const t=$("sBillType")?.value;
+  const isM=t==="monthly";
+  $("sPackTotalBox")?.classList.toggle("hide",isM);
+  $("sPackCntBox")?.classList.toggle("hide",isM);
+  $("sRateBox")?.classList.toggle("hide",isM);
+  $("sMonthBox")?.classList.toggle("hide",!isM);
+  $("sStartBox")?.classList.toggle("hide",!isM);
+  if(!isM) calcStudentSessionRate();
+}
+function calcStudentSessionRate(){
+  const total=Number($("sPackTotal")?.value)||0;
+  const cnt=Math.max(1,Number($("sPackCnt")?.value)||1);
+  const rate=Math.round((total/cnt)*100)/100;
+  if($("sRate")) $("sRate").value=rate;
+  if($("sRateHint")) $("sRateHint").textContent=`${total} ÷ ${cnt} = ${rate} ج للحصة`;
+}
+
+async function saveStudent(id){
+  if(!requirePerm("addStudent")) return;
+  const name=$("sName").value.trim();
+  if(!name){toast("الاسم مطلوب","err");return}
+  const data={name,phone:$("sPhone").value.trim(),parentName:$("sParent").value.trim(),updatedAt:Date.now()};
+  const groupId=$("sGroup")?.value||"";
+  let enrollments=id?(cache.students.find(x=>x.id===id)?.enrollments||[]):[];
+  enrollments=[...enrollments];
+  if(groupId){
+    const g=cache.groups.find(x=>x.id===groupId);
+    const teacherId=(g?.teacherIds||[])[0];
+    if(!teacherId){toast("المجموعة بلا معلم","err");return}
+    if(isPaused(cache.teachers.find(x=>x.id===teacherId))){toast("المعلم موقوف","err");return}
+    const type=$("sBillType").value;
+    const entry={groupId,teacherId,type,chargeOnAbsence:!!$("sAbs")?.checked,enrolledAt:todayISO(),
+      payTiming:$("sPayTiming")?.value||"advance",
+      payDay:Math.min(28,Math.max(1,Number($("sPayDay")?.value)||5))
+    };
+    if(type==="monthly"){entry.monthlyPrice=Number($("sMonth").value)||0;entry.startDate=$("sStart").value||todayISO()}
+    else {
+      const packTotal=Number($("sPackTotal")?.value)||0;
+      const packCnt=Math.max(1,Number($("sPackCnt")?.value)||1);
+      entry.packageTotal=packTotal;
+      entry.packageSessions=packCnt;
+      entry.sessionRate=Math.round((packTotal/packCnt)*100)/100 || Number($("sRate")?.value)||0;
+    }
+    const i=enrollments.findIndex(e=>e.groupId===groupId);
+    if(i>=0) enrollments[i]=entry; else enrollments.push(entry);
+  }
+  data.enrollments=enrollments;
+  try{
+    showLoading("جاري الحفظ...");
+    let acc=null;
+    if(!id && $("sCreateAcc")?.checked){
+      const phone=data.phone;
+      const pass=($("sPass")?.value||"").trim();
+      acc=await createPortalAccount("student",name,phone,pass);
+      data.authUid=acc.uid;
+      data.hasLogin=true;
+      data.loginPhone=acc.phone;
+    }
+    if(id) await db.collection("center_students").doc(id).update(data);
+    else {
+      const ref=await db.collection("center_students").add({...data,paused:false,createdAt:Date.now()});
+      if(acc){
+        try{ await db.collection("center_users").doc(acc.uid).update({linkedId:ref.id,linkedType:"student"}); }catch(e){}
+      }
+    }
+    closeModal();
+    toast(acc?"تم حفظ الطالب وإنشاء الحساب":"تم حفظ الطالب","ok");
+    if(acc && $("sSendWa")?.checked!==false){
+      setTimeout(()=>offerWhatsAppCreds("student",name,acc.phone,acc.password),400);
+    }
+  }catch(e){toast(e.message||e,"err")}
+  hideLoading();
+}
+function downloadStudentsTemplate(){
+  const rows=[{
+    "الاسم*":"مثال: أحمد محمد",
+    "الموبايل":"01000000000",
+    "ولي_الأمر":"محمد",
+    "اسم_المجموعة":"حلقة المساء",
+    "طريقة_الحساب":"حصة",
+    "اجمالي_الباقة":400,
+    "عدد_حصص_الباقة":8,
+    "مبلغ_الحصة":"(تلقائي)",
+    "قيمة_الشهر":"",
+    "بداية_الاشتراك":"",
+    "محاسبة_الغياب":"لا"
+  },{
+    "الاسم*":"مثال: سارة",
+    "الموبايل":"",
+    "ولي_الأمر":"",
+    "اسم_المجموعة":"المجموعة الصباحي",
+    "طريقة_الحساب":"شهر",
+    "مبلغ_الحصة":"",
+    "قيمة_الشهر":200,
+    "بداية_الاشتراك":todayISO(),
+    "محاسبة_الغياب":"نعم"
+  }];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows),"طلاب");
+  XLSX.writeFile(wb,"قالب-طلاب-السنتر.xlsx");
+  toast("تم تنزيل القالب","ok");
+}
+function triggerStudentsImport(){
+  if(!requirePerm("addStudent")) return;
+  $("stuImportFile")?.click();
+}
+async function importStudentsExcel(ev){
+  const file=ev.target.files&&ev.target.files[0];
+  ev.target.value="";
+  if(!file) return;
+  if(!requirePerm("addStudent")) return;
+  try{
+    showLoading("جاري قراءة الملف...");
+    const buf=await file.arrayBuffer();
+    const wb=XLSX.read(buf,{type:"array"});
+    const sheet=wb.Sheets[wb.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(sheet,{defval:""});
+    if(!rows.length){toast("الملف فارغ","err");hideLoading();return}
+    let ok=0, skip=0, err=0;
+    for(const row of rows){
+      const name=String(row["الاسم*"]||row["الاسم"]||row["name"]||"").trim();
+      if(!name||name.startsWith("مثال")){skip++;continue}
+      const phone=String(row["الموبايل"]||row["phone"]||"").trim();
+      const parent=String(row["ولي_الأمر"]||row["ولي الأمر"]||row["parent"]||"").trim();
+      const gName=String(row["اسم_المجموعة"]||row["المجموعة"]||"").trim();
+      const billRaw=String(row["طريقة_الحساب"]||row["الحساب"]||"حصة").trim();
+      const isMonth=/شهر|monthly/i.test(billRaw);
+      const packTotal=Number(row["اجمالي_الباقة"]||row["إجمالي_الباقة"]||row["اجمالي"]||0)||0;
+      const packCnt=Math.max(1,Number(row["عدد_حصص_الباقة"]||row["عدد_الحصص"]||8)||8);
+      let rate=Number(row["مبلغ_الحصة"]||row["سعر_الحصة"]||0)||0;
+      if(packTotal>0) rate=Math.round((packTotal/packCnt)*100)/100;
+      const monthPrice=Number(row["قيمة_الشهر"]||row["الاشتراك"]||0)||0;
+      const start=String(row["بداية_الاشتراك"]||"").trim()||todayISO();
+      const absRaw=String(row["محاسبة_الغياب"]||"").trim();
+      const chargeOnAbsence=/نعم|yes|1|true/i.test(absRaw);
+      const enrollments=[];
+      if(gName){
+        const g=cache.groups.find(x=>(x.name||"").trim()===gName);
+        if(g){
+          const teacherId=(g.teacherIds||[])[0];
+          if(teacherId&&!isPaused(cache.teachers.find(x=>x.id===teacherId))){
+            const entry={groupId:g.id,teacherId,type:isMonth?"monthly":"session",chargeOnAbsence,enrolledAt:todayISO()};
+            if(isMonth){entry.monthlyPrice=monthPrice;entry.startDate=start}
+            else {entry.sessionRate=rate||50; if(packTotal>0){entry.packageTotal=packTotal;entry.packageSessions=packCnt}}
+            enrollments.push(entry);
+          }
+        }
+      }
+      try{
+        await db.collection("center_students").add({
+          name,phone,parentName:parent,enrollments,paused:false,createdAt:Date.now(),updatedAt:Date.now()
+        });
+        ok++;
+      }catch(e){err++;console.warn(e)}
+    }
+    hideLoading();
+    toast(`تم: ${ok} · تخطي ${skip} · خطأ ${err}`,"ok");
+  }catch(e){hideLoading();toast("فشل قراءة الملف: "+(e.message||e),"err")}
+}
+
+function togglePause(kind,id){
+  const isStu=kind==="student";
+  if(isStu&&!requirePerm("addStudent")) return;
+  if(!isStu&&!requirePerm("addTeacher")) return;
+  const person=isStu?cache.students.find(x=>x.id===id):cache.teachers.find(x=>x.id===id);
+  if(!person) return;
+  if(isPaused(person)){
+    const col=isStu?"center_students":"center_teachers";
+    db.collection(col).doc(id).update({paused:false,pauseRemindAt:null,pauseNote:"",updatedAt:Date.now()}).then(()=>toast("تم التفعيل","ok")).catch(e=>toast(e.message,"err"));
+    return;
+  }
+  openModal("إيقاف مؤقت — "+(person.name||""),`
+    <p style="font-size:13px;margin-bottom:10px;color:var(--muted)">لن يُسمح بربطه في مجموعة أثناء الإيقاف.</p>
+    <label class="check-row"><input type="checkbox" id="pauseRemind" onchange="$('pauseRemindDate').classList.toggle('hide',!this.checked)"><span>ذكّرني لاحقاً في الإشعارات</span></label>
+    <div class="form-group hide" id="pauseRemindDate" style="margin-top:10px"><label>تاريخ التذكير</label><input type="date" id="pauseAt" value=""></div>
+    <div class="form-group"><label>سبب / ملاحظة</label><input id="pauseNote" placeholder="سافر / إجازة..."></div>
+  `,`<button class="btn btn-outline btn-sm" onclick="closeModal()">إلغاء</button>
+    <button class="btn btn-danger btn-sm" onclick="confirmPause('${kind}','${id}')">تأكيد الإيقاف</button>`);
+}
+async function confirmPause(kind,id){
+  const remind=$("pauseRemind")?.checked,at=remind?($("pauseAt")?.value||""):"";
+  if(remind&&!at){toast("حدد تاريخ التذكير","err");return}
+  const data={paused:true,pauseRemindAt:at||null,pauseNote:($("pauseNote")?.value||"").trim(),updatedAt:Date.now()};
+  const col=kind==="student"?"center_students":"center_teachers";
+  try{await db.collection(col).doc(id).update(data);closeModal();toast("تم الإيقاف","ok");updateNotifBadge()}
+  catch(e){toast(e.message,"err")}
+}
+function openEnroll(studentId){
+  if(!can("manageGroups")&&!can("addStudent")){toast("ليس لديك صلاحية","err");return}
+  const s=cache.students.find(x=>x.id===studentId);
+  if(isPaused(s)){toast("الطالب موقوف","err");return}
+  const gOpts=cache.groups.map(g=>{
+    const t=cache.teachers.find(x=>(g.teacherIds||[]).includes(x.id));
+    if(t&&isPaused(t)) return "";
+    return `<option value="${g.id}">${sanitize(g.name)} — ${sanitize(t?.name||"")}</option>`;
+  }).filter(Boolean).join("");
+  openModal("ربط طالب بمجموعة — "+(s?.name||""),`
+    <div class="form-group"><label>المجموعة *</label><select id="enGroup"><option value="">—</option>${gOpts}</select></div>
+    <div class="form-group"><label>حساب الطالب</label>
+      <select id="enType" onchange="onEnType()">
+        <option value="monthly" selected>بالشهر</option>
+        <option value="session">بالحصة</option>
+      </select>
+    </div>
+    <div class="form-group"><label>الدفع</label>
+      <select id="enPayTiming"><option value="advance" selected>مقدَّم (خلال الشهر) — المفضّل</option><option value="defer">مؤخَّر (بعد انتهاء الشهر)</option></select>
+    </div>
+    <div class="form-group"><label>يوم الدفع (1–28)</label><input type="number" id="enPayDay" min="1" max="28" value="5"></div>
+    <div id="enSBox" class="hide">
+      <div class="form-group"><label>إجمالي مبلغ الباقة (ج)</label><input type="number" id="enPackTotal" value="400" oninput="calcEnRate()"></div>
+      <div class="form-group"><label>عدد حصص الباقة</label><input type="number" id="enPackCnt" min="1" value="8" oninput="calcEnRate()"></div>
+      <div class="form-group"><label>سعر الحصة (تلقائي)</label><input type="number" id="enRate" value="50" readonly style="background:#f0f4f8">
+        <p id="enRateHint" style="font-size:11px;color:var(--muted);margin-top:4px">400 ÷ 8 = 50</p></div>
+    </div>
+    <div class="form-group hide" id="enMBox"><label>قيمة الشهر</label><input type="number" id="enMonth" value="200"><label style="margin-top:8px">بداية الاشتراك</label><input type="date" id="enStart" value="${todayISO()}"></div>
+    <label class="check-row"><input type="checkbox" id="enAbs"><span>محاسبة الغياب على الطالب</span></label>
+  `,`<button class="btn btn-outline btn-sm" onclick="closeModal()">إلغاء</button>
+    <button class="btn btn-primary btn-sm" onclick="saveEnroll('${studentId}')">حفظ الربط</button>`);
+  onEnType();
+}
+function onEnType(){const t=$("enType")?.value;$("enSBox")?.classList.toggle("hide",t==="monthly");$("enMBox")?.classList.toggle("hide",t!=="monthly");if(t!=="monthly")calcEnRate()}
+function calcEnRate(){
+  const total=Number($("enPackTotal")?.value)||0;
+  const cnt=Math.max(1,Number($("enPackCnt")?.value)||1);
+  const rate=Math.round((total/cnt)*100)/100;
+  if($("enRate")) $("enRate").value=rate;
+  if($("enRateHint")) $("enRateHint").textContent=`${total} ÷ ${cnt} = ${rate} ج للحصة`;
+}
+
+async function saveEnroll(studentId){
+  const s=cache.students.find(x=>x.id===studentId);
+  if(isPaused(s)){toast("الطالب موقوف","err");return}
+  const groupId=$("enGroup").value;
+  if(!groupId){toast("اختر مجموعة","err");return}
+  const g=cache.groups.find(x=>x.id===groupId);
+  const teacherId=(g?.teacherIds||[])[0];
+  if(!teacherId){toast("المجموعة بلا معلم","err");return}
+  if(isPaused(cache.teachers.find(x=>x.id===teacherId))){toast("المعلم موقوف","err");return}
+  const type=$("enType").value;
+  const entry={groupId,teacherId,type,chargeOnAbsence:!!$("enAbs")?.checked,enrolledAt:todayISO(),payTiming:$("enPayTiming")?.value||"advance",payDay:Math.min(28,Math.max(1,Number($("enPayDay")?.value)||5))};
+  if(type==="monthly"){entry.monthlyPrice=Number($("enMonth").value)||0;entry.startDate=$("enStart").value||todayISO()}
+  else {
+    const packTotal=Number($("enPackTotal")?.value)||0;
+    const packCnt=Math.max(1,Number($("enPackCnt")?.value)||1);
+    entry.packageTotal=packTotal;
+    entry.packageSessions=packCnt;
+    entry.sessionRate=Math.round((packTotal/packCnt)*100)/100 || Number($("enRate")?.value)||0;
+  }
+  let ens=[...(s.enrollments||[])];
+  const i=ens.findIndex(e=>e.groupId===groupId);
+  if(i>=0) ens[i]=entry; else ens.push(entry);
+  try{await db.collection("center_students").doc(studentId).update({enrollments:ens,updatedAt:Date.now()});closeModal();toast("تم الربط","ok")}
+  catch(e){toast(e.message,"err")}
+}
+
+function openStudentPay(studentId,preKey){
+  if(!requirePerm("collectStudent")) return;
+  const s=cache.students.find(x=>x.id===studentId);
+  const f=studentFinance(s);
+  const open=f.openSettlements||[];
+  const allOpen=f.settlements.filter(x=>x.remaining>0);
+  if(!open.length && !allOpen.length){toast("لا متبقي","err");return}
+  const baseList=(preKey&&allOpen.some(z=>z.key===preKey))?allOpen:(open.length?open:allOpen);
+  const opts=baseList.map(x=>`
+    <option value="${sanitize(x.key)}" ${x.key===preKey?"selected":""} data-remain="${x.remaining}" data-ym="${x.ym||""}" data-label="${sanitize(x.label)}">
+      ${sanitize(x.label)} — باقي ${x.remaining} ج — استحقاق ${x.dueDate}
+    </option>`).join("");
+  const others=allOpen.filter(x=>!x.open && x.remaining>0);
+  openModal("استلام مستحقات — "+(s?.name||""),`
+    <p style="font-size:13px;margin-bottom:8px">اختر <b>التسوية</b> التي تستلم عليها الآن. باقي التسويات تظل مستحقة.</p>
+    <div class="form-group"><label>التسوية *</label>
+      <select id="spSettle" onchange="onSpSettle()">${opts}</select>
+    </div>
+    <div id="spOther" style="margin-bottom:10px">${
+      (f.openSettlements||[]).length>1
+        ? `<p style="font-size:12px;color:var(--danger)">تسويات أخرى مفتوحة بالأحمر: ${(f.openSettlements||[]).map(x=>x.label+" ("+x.remaining+" ج)").join(" · ")}</p>`
+        : ""
+    }</div>
+    <div class="form-group"><label>المبلغ</label><input type="number" id="spAmt" value=""></div>
+    <div class="form-group"><label>تاريخ الاستلام</label><input type="date" id="spDate" value="${todayISO()}"></div>
+    <div class="form-group"><label>ملاحظة</label><input id="spNote" placeholder="اختياري"></div>
+  `,`<button class="btn btn-outline btn-sm" onclick="closeModal()">إلغاء</button>
+    <button class="btn btn-success btn-sm" onclick="saveStudentPay('${studentId}')">تأكيد الاستلام</button>`);
+  onSpSettle();
+}
+function onSpSettle(){
+  const sel=$("spSettle");
+  if(!sel) return;
+  const opt=sel.options[sel.selectedIndex];
+  const rem=Number(opt?.dataset?.remain)||0;
+  if($("spAmt")) $("spAmt").value=rem;
+}
+async function saveStudentPay(studentId){
+  const s=cache.students.find(x=>x.id===studentId);
+  const amount=Number($("spAmt").value)||0;
+  if(amount<=0){toast("أدخل مبلغاً","err");return}
+  const sel=$("spSettle");
+  const opt=sel?.options[sel.selectedIndex];
+  const settlementKey=sel?.value||"";
+  const settlementYm=opt?.dataset?.ym||"";
+  const settlementLabel=opt?.dataset?.label||opt?.text||"";
+  if(!settlementKey){toast("اختر التسوية","err");return}
+  try{
+    await db.collection("center_payments").add({
+      type:"student_payment", studentId, studentName:s?.name||"",
+      amount, payDate:$("spDate").value||todayISO(), note:($("spNote").value||"").trim(),
+      settlementKey, settlementYm, settlementLabel,
+      at:Date.now(), by:currentUser.uid
+    });
+    closeModal();toast("تم الاستلام على: "+settlementLabel,"ok");
+  }catch(e){toast(e.message,"err")}
+}
+
+
+function editPayment(payId){
+  const p=(cache.payments||[]).find(x=>x.id===payId);
+  if(!p){toast("غير موجود","err");return}
+  if(p.type==="student_payment"&&!requirePerm("collectStudent")) return;
+  if(p.type==="teacher_payment"&&!requirePerm("payTeacher")) return;
+  openModal("تعديل عملية دفع",`
+    <div class="form-group"><label>المبلغ</label><input type="number" id="edAmt" value="${p.amount||0}"></div>
+    <div class="form-group"><label>التاريخ</label><input type="date" id="edDate" value="${sanitize(p.payDate||"")}"></div>
+    <div class="form-group"><label>ملاحظة</label><input id="edNote" value="${sanitize(p.note||"")}"></div>
+  `,`<button class="btn btn-outline btn-sm" onclick="closeModal()">إلغاء</button>
+    <button class="btn btn-danger btn-sm" onclick="deletePayment('${payId}')">حذف</button>
+    <button class="btn btn-primary btn-sm" onclick="saveEditPayment('${payId}')">حفظ</button>`);
+}
+async function saveEditPayment(payId){
+  const amount=Number($("edAmt").value)||0;
+  if(amount<=0){toast("مبلغ غير صالح","err");return}
+  try{
+    await db.collection("center_payments").doc(payId).update({
+      amount, payDate:$("edDate").value||todayISO(), note:($("edNote").value||"").trim(), updatedAt:Date.now()
+    });
+    closeModal();toast("تم التعديل","ok");
+  }catch(e){toast(e.message,"err")}
+}
+async function deletePayment(payId){
+  if(!confirm("حذف هذه العملية؟")) return;
+  try{await db.collection("center_payments").doc(payId).delete();closeModal();toast("تم الحذف","ok")}
+  catch(e){toast(e.message,"err")}
+}
+
+function renderSessions(){
+  const q=(pageQ.sessions||"").trim().toLowerCase();
+  let items=[...cache.sessions].reverse();
+  if(duesFilterActive("sessions")) items=items.filter(s=>dateMatchesDues("sessions",s.date));
+  if(q){
+    items=items.filter(s=>{
+      const g=cache.groups.find(x=>x.id===s.groupId);
+      const te=cache.teachers.find(x=>x.id===s.teacherId);
+      const blob=((s.date||"")+" "+(s.time||"")+" "+(g?.name||"")+" "+(te?.name||"")).toLowerCase();
+      return blob.includes(q);
+    });
+  }
+  const list=items.slice(0,(duesFilterActive("sessions")||q)?1000:80).map(s=>{
+    const g=cache.groups.find(x=>x.id===s.groupId);
+    const te=cache.teachers.find(x=>x.id===s.teacherId);
+    const pr=(s.attendance||[]).filter(a=>a.status==="present").length;
+    const ab=(s.attendance||[]).filter(a=>a.status==="absent").length;
+    return `<div class="list-item"><div>
+      <div class="item-title">${sanitize(s.date)}${s.time?" · "+sanitize(s.time):""} — ${sanitize(g?.name||"")}</div>
+      <div class="item-meta">المعلم: ${sanitize(te?.name||"")} · حاضر ${pr} · غائب ${ab}</div>
+    </div></div>`;
+  }).join("")||`<div class="empty-state"><p>لا جلسات</p></div>`;
+  return `<div class="page-header"><h2>✅ الجلسات</h2>
+    ${can("registerSession")?`<button class="btn btn-primary btn-sm" onclick="openSessionForm()">+ جلسة</button>`:""}</div>
+  <div class="search-bar"><input placeholder="بحث: مجموعة أو معلم أو تاريخ..." value="${sanitize(pageQ.sessions||"")}" data-sk="sessions" oninput="pageQ.sessions=this.value;renderPage()"></div>
+  ${duesFilterHTML("sessions")}
+  <p style="font-size:12px;color:var(--muted);margin-bottom:10px">التواريخ السابقة مسموحة عند التسجيل</p>
+  ${list}`;
+}
+function openSessionForm(preGroupId){
+  if(!requirePerm("registerSession")) return;
+  openModal("تسجيل جلسة",`
+    <div class="form-group"><label>بحث (مجموعة / معلم / طالب)</label>
+      <input id="seSearch" placeholder="اكتب للبحث..." oninput="onSessionSearch()"></div>
+    <div id="seSearchResults" style="max-height:140px;overflow-y:auto;margin-bottom:8px"></div>
+    <div class="form-group"><label>المجموعة *</label>
+      <select id="seG" onchange="onSeG()"><option value="">— اختر أو ابحث أعلاه —</option>
+        ${cache.groups.map(g=>{
+          const te=cache.teachers.find(x=>(g.teacherIds||[]).includes(x.id));
+          return `<option value="${g.id}" ${preGroupId===g.id?"selected":""}>${sanitize(g.name)} — ${sanitize(te?.name||"")}</option>`;
+        }).join("")}
+      </select>
+    </div>
+    <div class="form-grid two">
+      <div class="form-group"><label>التاريخ (سابق مسموح)</label><input type="date" id="seD" value="${todayISO()}"></div>
+      <div class="form-group"><label>الوقت</label><input type="time" id="seT" value=""></div>
+    </div>
+    <div id="seAtt"><p style="font-size:12px;color:var(--muted)">اختر المجموعة لعرض الطلاب</p></div>
+  `,`<button class="btn btn-outline btn-sm" onclick="closeModal()">إلغاء</button>
+    <button class="btn btn-primary btn-sm" onclick="saveSession()">حفظ</button>`);
+  if(preGroupId) onSeG();
+}
+function onSessionSearch(){
+  const q=($("seSearch")?.value||"").trim().toLowerCase();
+  const box=$("seSearchResults");
+  if(!box) return;
+  if(q.length<1){box.innerHTML="";return}
+  const hits=[];
+  cache.groups.forEach(g=>{
+    const te=cache.teachers.find(x=>(g.teacherIds||[]).includes(x.id));
+    if((g.name||"").toLowerCase().includes(q)||(te?.name||"").toLowerCase().includes(q))
+      hits.push({type:"group",id:g.id,label:`مجموعة: ${g.name} — ${te?.name||""}`});
+  });
+  cache.teachers.filter(x=>!isPaused(x)).forEach(te=>{
+    if((te.name||"").toLowerCase().includes(q))
+      hits.push({type:"teacher",id:te.id,label:`معلم: ${te.name}`});
+  });
+  cache.students.filter(x=>!isPaused(x)).forEach(st=>{
+    if((st.name||"").toLowerCase().includes(q))
+      hits.push({type:"student",id:st.id,label:`طالب: ${st.name}`});
+  });
+  box.innerHTML=hits.slice(0,12).map(h=>`
+    <div class="session-search-item" onclick="pickSessionSearch('${h.type}','${h.id}')">${sanitize(h.label)}</div>
+  `).join("")||`<p style="font-size:12px;color:var(--muted)">لا نتائج</p>`;
+}
+function pickSessionSearch(type,id){
+  let groupId="";
+  if(type==="group") groupId=id;
+  else if(type==="teacher"){
+    const g=cache.groups.find(x=>(x.teacherIds||[]).includes(id));
+    groupId=g?.id||"";
+  }else if(type==="student"){
+    const st=cache.students.find(x=>x.id===id);
+    groupId=(st?.enrollments||[])[0]?.groupId||"";
+  }
+  if(!groupId){toast("لا مجموعة مرتبطة","err");return}
+  if($("seG")) $("seG").value=groupId;
+  if($("seSearchResults")) $("seSearchResults").innerHTML="";
+  if($("seSearch")) $("seSearch").value="";
+  onSeG();
+}
+function onSeG(){
+  const gid=$("seG")?.value;
+  const sts=cache.students.filter(s=>(s.enrollments||[]).some(e=>e.groupId===gid)&&!isPaused(s));
+  $("seAtt").innerHTML=sts.length?sts.map(s=>`
+    <label class="check-row" style="justify-content:space-between"><span>${sanitize(s.name)}</span>
+      <select class="attSel" data-sid="${s.id}" style="width:auto;min-height:36px;padding:6px 10px">
+        <option value="present">حاضر</option><option value="absent">غائب</option>
+      </select></label>`).join(""):`<p style="color:var(--danger);font-size:13px">لا طلاب مربوطين</p>`;
+}
+function normTime(t){
+  t=String(t||"").trim();
+  if(!t) return "";
+  // 16:00 or 4:00 PM -> keep comparable HH:MM when possible
+  const m=t.match(/^(\d{1,2}):(\d{2})/);
+  if(m) return String(m[1]).padStart(2,"0")+":"+m[2];
+  return t;
+}
+async function saveSession(){
+  if(!requirePerm("registerSession")) return;
+  const groupId=$("seG").value,date=$("seD").value,time=($("seT")?.value||"").trim();
+  if(!groupId||!date){toast("أكمل المجموعة والتاريخ","err");return}
+  const g=cache.groups.find(x=>x.id===groupId);
+  const teacherId=(g?.teacherIds||[])[0];
+  if(!teacherId){toast("لا معلم للمجموعة","err");return}
+  const nt=normTime(time);
+  const dup=(cache.sessions||[]).find(s=>
+    s.groupId===groupId && s.date===date && normTime(s.time)===nt && s.status!=="cancelled"
+  );
+  if(dup){
+    toast("تم تسجيل جلسة لهذه المجموعة في نفس التاريخ والوقت مسبقاً","err");
+    return;
+  }
+  const attendance=[...document.querySelectorAll(".attSel")].map(sel=>({studentId:sel.dataset.sid,status:sel.value}));
+  const te=cache.teachers.find(x=>x.id===teacherId);
+  try{
+    await db.collection("center_sessions").add({
+      groupId,teacherId,date,time,attendance,status:"approved",
+      rateAtTime:te?.payMode==="per_student"?null:Number(te?.ratePerSession||0),
+      createdAt:Date.now()
+    });
+    closeModal();toast("تم تسجيل الجلسة","ok");
+  }catch(e){toast(e.message,"err")}
+}
+
+let scheduleDay=null; // يوم العرض المختار
+function scheduleOnDay(s, wd){
+  if(s.weekDay!=null && s.weekDay!=="") return Number(s.weekDay)===Number(wd);
+  if(Array.isArray(s.weekDays)&&s.weekDays.length) return s.weekDays.map(Number).includes(Number(wd));
+  // توافق قديم بتاريخ
+  if(s.date){
+    try{ return new Date(s.date+"T12:00:00").getDay()===Number(wd); }catch(e){return false}
+  }
+  return false;
+}
+function countSchedDay(wd){
+  return (cache.schedule||[]).filter(s=>scheduleOnDay(s,wd)).length;
+}
+function setScheduleDay(wd){
+  scheduleDay=Number(wd);
+  renderPage();
+}
+function formatTimeRange(s){
+  const a=s.timeFrom||s.time||"";
+  const b=s.timeTo||"";
+  if(a&&b) return a+" — "+b;
+  return a||"—";
+}
+function renderSchedule(){
+  if(scheduleDay==null) scheduleDay=todayWeekId();
+  const wd=scheduleDay;
+  const dayName=weekDayName(wd);
+  const items=(cache.schedule||[]).filter(s=>scheduleOnDay(s,wd))
+    .slice().sort((a,b)=>String(a.timeFrom||a.time||"").localeCompare(String(b.timeFrom||b.time||"")));
+
+  const tabs=WEEK_DAYS.map(d=>{
+    const n=countSchedDay(d.id);
+    const on=Number(wd)===d.id;
+    return `<button type="button" class="btn ${on?"btn-primary":"btn-outline"} btn-sm" style="border-radius:20px;min-width:auto;padding:8px 12px"
+      onclick="setScheduleDay(${d.id})">${d.label}${n?` (${n})`:""}</button>`;
+  }).join("");
+
+  const list=items.map(s=>{
+    const g=cache.groups.find(x=>x.id===s.groupId);
+    const t=cache.teachers.find(x=>x.id===s.teacherId);
+    return `<div class="list-item" style="align-items:center">
+      <div style="flex:1">
+        <div class="item-title">📚 ${sanitize(g?.name||s.title||"—")}</div>
+        <div class="item-meta">المعلم: ${sanitize(t?.name||s.teacherName||"—")}<br>⏰ ${sanitize(formatTimeRange(s))}</div>
+      </div>
+      <div class="item-actions">
+        ${can("registerSession")?`<button class="btn btn-primary btn-sm" onclick="openSessionFromSched('${s.id}')">تسجيل جلسة</button>`:""}
+        ${can("manageSchedule")?`<button class="btn btn-outline btn-sm" onclick="openSchedEdit('${s.id}')">تعديل الوقت</button>`:""}
+        ${can("manageSchedule")||can("deleteData")?`<button class="btn btn-danger btn-sm" onclick="deleteSched('${s.id}')">حذف</button>`:""}
+      </div>
+    </div>`;
+  }).join("")||`<div class="empty-state"><p>لا مواعيد يوم ${dayName}</p></div>`;
+
+  return `<div class="page-header"><h2>📅 جدول الحصص</h2>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">
+      ${can("manageSchedule")?`<button class="btn btn-outline btn-sm" onclick="exportScheduleReport()">📊 تقرير جدولي</button>`:""}
+      ${can("manageSchedule")?`<button class="btn btn-primary btn-sm" onclick="openSchedForm()">+ موعد</button>`:""}
+    </div>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;justify-content:flex-start">${tabs}</div>
+  <div class="card">
+    <div class="card-title">مواعيد يوم ${dayName} (${items.length})</div>
+    ${list}
+  </div>`;
+}
+function openSchedForm(){
+  if(!requirePerm("manageSchedule")) return;
+  const gOpts=cache.groups.map(g=>{
+    const te=cache.teachers.find(x=>(g.teacherIds||[]).includes(x.id));
+    return `<option value="${g.id}">${sanitize(g.name)}${te?" / "+sanitize(te.name):""}</option>`;
+  }).join("");
+  const dayOpts=WEEK_DAYS.map(d=>`<option value="${d.id}" ${Number(scheduleDay)===d.id?"selected":""}>${d.label}</option>`).join("");
+  openModal("إضافة موعد للجدول",`
+    <div class="form-grid two">
+      <div class="form-group"><label>المجموعة</label>
+        <select id="scG"><option value="">— اختر —</option>${gOpts}</select></div>
+      <div class="form-group"><label>اليوم</label>
+        <select id="scDay">${dayOpts}</select></div>
+      <div class="form-group"><label>من الساعة</label>
+        <input type="time" id="scFrom" value="16:00"></div>
+      <div class="form-group"><label>إلى الساعة</label>
+        <input type="time" id="scTo" value="17:00"></div>
+    </div>
+  `,`<button class="btn btn-outline btn-sm" onclick="closeModal()">إلغاء</button>
+    <button class="btn btn-primary btn-sm" onclick="saveSched()">حفظ</button>`);
+}
+async function saveSched(){
+  if(!requirePerm("manageSchedule")) return;
+  const groupId=$("scG").value;
+  const day=Number($("scDay")?.value);
+  const timeFrom=($("scFrom")?.value||"").trim();
+  const timeTo=($("scTo")?.value||"").trim();
+  if(!groupId){toast("اختر المجموعة","err");return}
+  if(day!==0 && !day && day!==6){ /* 0 is Sunday valid */ }
+  if(Number.isNaN(day)){toast("اختر اليوم","err");return}
+  if(!timeFrom){toast("حدد من الساعة","err");return}
+  const g=cache.groups.find(x=>x.id===groupId);
+  const teacherId=(g?.teacherIds||[])[0]||"";
+  try{
+    await db.collection("center_schedule").add({
+      weekDay:day,
+      weekDays:[day],
+      time:timeFrom,
+      timeFrom,
+      timeTo:timeTo||"",
+      groupId,teacherId,
+      recurring:true,
+      createdAt:Date.now()
+    });
+    scheduleDay=day;
+    closeModal();toast("تم حفظ الموعد","ok");
+  }catch(e){toast(e.message,"err")}
+}
+
+function openSessionFromSched(schedId){
+  if(!requirePerm("registerSession")) return;
+  const s=(cache.schedule||[]).find(x=>x.id===schedId);
+  if(!s){toast("الموعد غير موجود","err");return}
+  const time=s.timeFrom||s.time||"";
+  // openSessionForm supports preGroupId
+  openSessionForm(s.groupId);
+  setTimeout(()=>{
+    if($("seT")&&time) $("seT").value=time.length===5?time:time;
+    if($("seD")) $("seD").value=todayISO();
+  },80);
+}
+function openSchedEdit(id){
+  if(!requirePerm("manageSchedule")) return;
+  const s=(cache.schedule||[]).find(x=>x.id===id);
+  if(!s){toast("غير موجود","err");return}
+  const g=cache.groups.find(x=>x.id===s.groupId);
+  const gOpts=cache.groups.map(g=>{
+    const te=cache.teachers.find(x=>(g.teacherIds||[]).includes(x.id));
+    return `<option value="${g.id}" ${g.id===s.groupId?"selected":""}>${sanitize(g.name)}${te?" / "+sanitize(te.name):""}</option>`;
+  }).join("");
+  const dayVal=s.weekDay!=null?Number(s.weekDay):(Array.isArray(s.weekDays)&&s.weekDays.length?Number(s.weekDays[0]):todayWeekId());
+  const dayOpts=WEEK_DAYS.map(d=>`<option value="${d.id}" ${dayVal===d.id?"selected":""}>${d.label}</option>`).join("");
+  openModal("تعديل موعد الجدول",`
+    <div class="form-grid two">
+      <div class="form-group"><label>المجموعة</label>
+        <select id="scG"><option value="">—</option>${gOpts}</select></div>
+      <div class="form-group"><label>اليوم</label>
+        <select id="scDay">${dayOpts}</select></div>
+      <div class="form-group"><label>من الساعة</label>
+        <input type="time" id="scFrom" value="${sanitize(s.timeFrom||s.time||"16:00")}"></div>
+      <div class="form-group"><label>إلى الساعة</label>
+        <input type="time" id="scTo" value="${sanitize(s.timeTo||"")}"></div>
+    </div>
+  `,`<button class="btn btn-outline btn-sm" onclick="closeModal()">إلغاء</button>
+    <button class="btn btn-primary btn-sm" onclick="saveSchedEdit('${id}')">حفظ التعديل</button>`);
+}
+async function saveSchedEdit(id){
+  if(!requirePerm("manageSchedule")) return;
+  const groupId=$("scG").value;
+  const day=Number($("scDay")?.value);
+  const timeFrom=($("scFrom")?.value||"").trim();
+  const timeTo=($("scTo")?.value||"").trim();
+  if(!groupId){toast("اختر المجموعة","err");return}
+  if(Number.isNaN(day)){toast("اختر اليوم","err");return}
+  if(!timeFrom){toast("حدد من الساعة","err");return}
+  const g=cache.groups.find(x=>x.id===groupId);
+  const teacherId=(g?.teacherIds||[])[0]||"";
+  try{
+    await db.collection("center_schedule").doc(id).update({
+      weekDay:day, weekDays:[day],
+      time:timeFrom, timeFrom, timeTo:timeTo||"",
+      groupId, teacherId, updatedAt:Date.now()
+    });
+    scheduleDay=day;
+    closeModal();toast("تم التعديل","ok");
+  }catch(e){toast(e.message,"err")}
+}
+
+async function deleteSched(id){
+  if(!can("manageSchedule")&&!can("deleteData")){toast("ليس لديك صلاحية","err");return}
+  if(!confirm("حذف الموعد؟")) return;
+  try{await db.collection("center_schedule").doc(id).delete()}catch(e){toast(e.message,"err")}
+}
+function exportScheduleReport(){
+  const rows=[];
+  WEEK_DAYS.forEach(d=>{
+    (cache.schedule||[]).filter(s=>scheduleOnDay(s,d.id)).forEach(s=>{
+      const g=cache.groups.find(x=>x.id===s.groupId);
+      const t=cache.teachers.find(x=>x.id===s.teacherId);
+      rows.push({اليوم:d.label,المجموعة:g?.name||"",المعلم:t?.name||"",من:s.timeFrom||s.time||"",إلى:s.timeTo||""});
+    });
+  });
+  if(!rows.length){toast("لا مواعيد","err");return}
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows),"جدول");
+  XLSX.writeFile(wb,"جدول-الحصص.xlsx");
+  toast("تم التصدير","ok");
+}
+
+
+/* ----- مشرفون مساعدون ----- */
+function renderStaff(){
+  if(!can("manageStaff")) return `<div class="empty-state"><p>ليس لديك صلاحية</p></div>`;
+  const list=(cache.staff||[]).map(u=>{
+    const perms=u.fullAccess?"كل الصلاحيات":PERM_KEYS.filter(p=>u.perms&&u.perms[p.key]).map(p=>p.label).join(" · ")||"لا صلاحيات";
+    return `<div class="list-item ${u.active===false?"closed":""}"><div>
+      <div class="item-title">🛡️ ${sanitize(u.name||"—")} ${u.active===false?'<span class="chip red">موقوف</span>':""}</div>
+      <div class="item-meta">${sanitize(u.phone||u.email||"")}<br>${sanitize(perms)}</div></div>
+      <div class="item-actions">
+        <button class="btn btn-outline btn-sm" onclick="openStaffForm('${u.id}')">تعديل صلاحيات</button>
+        <button class="btn ${u.active===false?"btn-success":"btn-danger"} btn-sm" onclick="toggleStaffActive('${u.id}')">${u.active===false?"تفعيل":"إيقاف"}</button>
+      </div></div>`;
+  }).join("")||`<div class="empty-state"><p>لا مشرفين مساعدين</p></div>`;
+  return `<div class="page-header"><h2>🛡️ المشرفون المساعدون</h2>
+    <button class="btn btn-primary btn-sm" onclick="openStaffForm()">+ مشرف</button></div>
+  <p style="font-size:12px;color:var(--muted);margin-bottom:10px">حدد الصلاحيات عند الإنشاء أو امنحه وصولاً كاملاً مثل المالك.</p>${list}`;
+}
+function openStaffForm(id){
+  if(!requirePerm("manageStaff")) return;
+  const u=id?cache.staff.find(x=>x.id===id):null;
+  const full=u?!!u.fullAccess:false;
+  const checks=PERM_KEYS.map(p=>{
+    const on=u?(u.fullAccess||(u.perms&&u.perms[p.key])):false;
+    return `<label class="check-row"><input type="checkbox" class="permChk" value="${p.key}" ${on?"checked":""} ${full?"disabled":""}><span>${p.label}</span></label>`;
+  }).join("");
+  openModal(u?"تعديل مشرف":"مشرف مساعد جديد",`
+    <div class="form-group"><label>الاسم *</label><input id="stName" value="${sanitize(u?.name||"")}"></div>
+    <div class="form-group"><label>الموبايل أو البريد ${u?"":"*"}</label><input id="stPhone" value="${sanitize(u?.phone||u?.email||"")}" ${u?"disabled":""}></div>
+    ${u?"":`<div class="form-group"><label>كلمة المرور *</label><input id="stPass" type="password" placeholder="6 أحرف على الأقل"></div>`}
+    <label class="check-row"><input type="checkbox" id="stFull" ${full?"checked":""} onchange="onStaffFull()"><span><b>نفس صلاحيات المالك (كامل)</b></span></label>
+    <div id="stPerms" style="margin-top:10px" class="${full?"hide":""}">
+      <div style="font-size:13px;font-weight:bold;margin-bottom:8px;color:var(--primary)">أو حدد صلاحيات محددة:</div>
+      ${checks}
+    </div>
+  `,`<button class="btn btn-outline btn-sm" onclick="closeModal()">إلغاء</button>
+    <button class="btn btn-primary btn-sm" onclick="saveStaff('${id||""}')">حفظ</button>`);
+}
+function onStaffFull(){
+  const full=!!$("stFull")?.checked;
+  $("stPerms")?.classList.toggle("hide",full);
+  document.querySelectorAll(".permChk").forEach(c=>{c.disabled=full;if(full) c.checked=true});
+}
+async function saveStaff(id){
+  if(!requirePerm("manageStaff")) return;
+  const name=$("stName").value.trim();
+  if(!name){toast("الاسم مطلوب","err");return}
+  const full=!!$("stFull")?.checked;
+  const perms={};
+  PERM_KEYS.forEach(p=>{perms[p.key]=full||!!document.querySelector(`.permChk[value="${p.key}"]`)?.checked});
+  try{
+    showLoading("جاري الحفظ...");
+    if(id){
+      await db.collection("center_users").doc(id).update({name,fullAccess:full,perms,updatedAt:Date.now()});
+      closeModal();toast("تم تحديث الصلاحيات","ok");
+    }else{
+      const phone=$("stPhone").value.trim(),pass=$("stPass").value;
+      if(!phone||!pass||pass.length<6){toast("موبايل/بريد وكلمة مرور (6+)","err");hideLoading();return}
+      const email=phoneToEmail(phone);
+      const sec=getSecondaryAuth();
+      const cred=await sec.createUserWithEmailAndPassword(email,pass);
+      const uid=cred.user.uid;
+      await db.collection("center_users").doc(uid).set({
+        name,phone,email,role:"supervisor",fullAccess:full,perms,active:true,createdAt:Date.now(),createdBy:currentUser.uid
+      });
+      await sec.signOut();
+      closeModal();toast("تم إنشاء المشرف","ok");
+    }
+  }catch(e){
+    toast(e.code==="auth/email-already-in-use"?"الحساب موجود مسبقاً":(e.message||e),"err");
+  }
+  hideLoading();
+}
+async function toggleStaffActive(id){
+  if(!requirePerm("manageStaff")) return;
+  const u=cache.staff.find(x=>x.id===id);
+  if(!u) return;
+  try{
+    await db.collection("center_users").doc(id).update({active:u.active===false,updatedAt:Date.now()});
+    toast(u.active===false?"تم التفعيل":"تم الإيقاف","ok");
+  }catch(e){toast(e.message,"err")}
+}
+
+function payDateStr(p){
+  if(p.payDate) return String(p.payDate).slice(0,10);
+  if(p.at) return new Date(p.at).toISOString().slice(0,10);
+  return "";
+}
+function inRange(dateStr, from, to){
+  if(!dateStr) return false;
+  const d=String(dateStr).slice(0,10);
+  if(from && d<from) return false;
+  if(to && d>to) return false;
+  return true;
+}
+let reportRange={from:"",to:""};
+function getReportRange(){
+  if(!reportRange.from||!reportRange.to) defaultReportRange();
+  return {from:reportRange.from,to:reportRange.to};
+}
+function defaultReportRange(){
+  const now=new Date();
+  const y=now.getFullYear(), m=String(now.getMonth()+1).padStart(2,"0");
+  reportRange.from=y+"-"+m+"-01";
+  reportRange.to=todayISO();
+}
+function applyReportDates(){
+  const f=$("repFrom")?.value, to=$("repTo")?.value;
+  if(f) reportRange.from=f;
+  if(to) reportRange.to=to;
+  renderPage();
+}
+
+function paymentsInRange(type){
+  const {from,to}=getReportRange();
+  return (cache.payments||[]).filter(p=>{
+    if(type && p.type!==type) return false;
+    return inRange(payDateStr(p), from, to);
+  });
+}
+function sessionsInRange(){
+  const {from,to}=getReportRange();
+  return (cache.sessions||[]).filter(s=>isSessionOk(s)&&inRange(s.date, from, to));
+}
+function renderReports(){
+  if(!reportRange.from) defaultReportRange();
+  const {from,to}=getReportRange();
+  const studentPays=paymentsInRange("student_payment");
+  const teacherPays=paymentsInRange("teacher_payment");
+  const collected=studentPays.reduce((s,p)=>s+Number(p.amount||0),0);
+  const paidTeachers=teacherPays.reduce((s,p)=>s+Number(p.amount||0),0);
+  const profit=collected-paidTeachers;
+  const sessCount=sessionsInRange().length;
+  let wipe="";
+  if(can("wipeAll")){
+    wipe=`<div class="card" style="margin-top:20px;border:1.5px solid var(--danger)">
+      <div class="card-title" style="color:var(--danger)">⚠️ منطقة خطرة — مسح البيانات</div>
+      <p style="font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:12px">الحذف نهائي من Firebase. حسابات الدخول تبقى.</p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">
+        <button type="button" class="btn btn-outline btn-sm" style="border-color:var(--danger);color:var(--danger)" onclick="confirmWipe('sessions')">مسح الجلسات</button>
+        <button type="button" class="btn btn-outline btn-sm" style="border-color:var(--danger);color:var(--danger)" onclick="confirmWipe('students')">مسح الطلاب</button>
+        <button type="button" class="btn btn-outline btn-sm" style="border-color:var(--danger);color:var(--danger)" onclick="confirmWipe('teachers')">مسح المعلمين</button>
+        <button type="button" class="btn btn-outline btn-sm" style="border-color:var(--danger);color:var(--danger)" onclick="confirmWipe('payments')">مسح المدفوعات</button>
+        <button type="button" class="btn btn-outline btn-sm" style="border-color:var(--danger);color:var(--danger)" onclick="confirmWipe('groups')">مسح المجموعات</button>
+        <button type="button" class="btn btn-danger btn-sm" onclick="confirmWipe('all')">مسح الجميع</button>
+      </div></div>`;
+  }
+  return `<div class="page-header"><h2>📈 التقارير</h2>
+    <button class="btn btn-outline btn-sm" onclick="exportExcel()">📥 إكسل</button></div>
+  <div class="card">
+    <div class="card-title">الفترة</div>
+    <div class="form-grid two">
+      <div class="form-group"><label>من تاريخ</label><input type="date" id="repFrom" value="${sanitize(from)}" onchange="applyReportDates()"></div>
+      <div class="form-group"><label>إلى تاريخ</label><input type="date" id="repTo" value="${sanitize(to)}" onchange="applyReportDates()"></div>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">
+      <button type="button" class="btn btn-outline btn-sm" onclick="setReportPreset('month')">هذا الشهر</button>
+      <button type="button" class="btn btn-outline btn-sm" onclick="setReportPreset('lastMonth')">الشهر الماضي</button>
+      <button type="button" class="btn btn-outline btn-sm" onclick="setReportPreset('year')">هذه السنة</button>
+    </div>
+  </div>
+  <div class="stats-grid">
+    <div class="stat-card success" style="cursor:pointer" onclick="showReportDetails('collect')">
+      <div class="stat-num">${money(collected)}</div>
+      <div class="stat-label">المتحصَّل من الطلاب — اضغط للتفاصيل</div>
+    </div>
+    <div class="stat-card warn" style="cursor:pointer" onclick="showReportDetails('teachers')">
+      <div class="stat-num">${money(paidTeachers)}</div>
+      <div class="stat-label">مدفوع للمعلمين — اضغط للتفاصيل</div>
+    </div>
+    <div class="stat-card ${profit>=0?"success":"danger"}" style="cursor:pointer" onclick="showReportDetails('profit')">
+      <div class="stat-num">${money(profit)}</div>
+      <div class="stat-label">الربح (تحصيل − صرف)</div>
+    </div>
+    <div class="stat-card" style="cursor:pointer" onclick="showReportDetails('sessions')">
+      <div class="stat-num">${sessCount}</div>
+      <div class="stat-label">جلسات مسجّلة في الفترة — اضغط</div>
+    </div>
+  </div>
+  <p style="font-size:12px;color:var(--muted);margin:8px 0 12px">من ${sanitize(from||"—")} إلى ${sanitize(to||"—")}</p>
+  ${wipe}`;
+}
+function setReportPreset(kind){
+  const now=new Date();
+  const y=now.getFullYear(), m=now.getMonth();
+  if(kind==="month"){
+    reportRange.from=y+"-"+String(m+1).padStart(2,"0")+"-01";
+    reportRange.to=todayISO();
+  }else if(kind==="lastMonth"){
+    const d=new Date(y,m,0);
+    reportRange.from=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-01";
+    reportRange.to=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  }else if(kind==="year"){
+    reportRange.from=y+"-01-01";
+    reportRange.to=todayISO();
+  }
+  renderPage();
+}
+function showReportDetails(kind){
+  const {from,to}=getReportRange();
+  if(kind==="collect"){
+    const list=paymentsInRange("student_payment").sort((a,b)=>payDateStr(b).localeCompare(payDateStr(a)));
+    const body=list.length?list.map(p=>`
+      <div class="list-item ok"><div>
+        <div class="item-title">${sanitize(p.studentName||"طالب")}</div>
+        <div class="item-meta">${money(p.amount)} ج · ${sanitize(payDateStr(p))}${p.note?" · "+sanitize(p.note):""}</div>
+      </div></div>`).join(""):`<div class="empty-state"><p>لا تحصيل في هذه الفترة</p></div>`;
+    openModal("المتحصَّل ("+from+" → "+to+")", body);
+    return;
+  }
+  if(kind==="teachers"){
+    const list=paymentsInRange("teacher_payment").sort((a,b)=>payDateStr(b).localeCompare(payDateStr(a)));
+    const body=list.length?list.map(p=>`
+      <div class="list-item"><div>
+        <div class="item-title">${sanitize(p.teacherName||"معلم")} · ${sanitize(p.groupName||"")}</div>
+        <div class="item-meta">${money(p.amount)} ج · ${sanitize(payDateStr(p))}${p.note?" · "+sanitize(p.note):""}</div>
+      </div></div>`).join(""):`<div class="empty-state"><p>لا مدفوعات معلمين في الفترة</p></div>`;
+    openModal("مدفوع للمعلمين ("+from+" → "+to+")", body);
+    return;
+  }
+  if(kind==="sessions"){
+    const list=sessionsInRange().slice().reverse();
+    const body=list.length?list.map(s=>{
+      const g=cache.groups.find(x=>x.id===s.groupId);
+      const t=cache.teachers.find(x=>x.id===s.teacherId);
+      const p=(s.attendance||[]).filter(a=>a.status==="present").length;
+      return `<div class="list-item"><div>
+        <div class="item-title">${sanitize(s.date)} — ${sanitize(g?.name||"")}</div>
+        <div class="item-meta">المعلم: ${sanitize(t?.name||"—")} · حاضر ${p}</div>
+      </div></div>`;
+    }).join(""):`<div class="empty-state"><p>لا جلسات في الفترة</p></div>`;
+    openModal("جلسات الفترة ("+from+" → "+to+")", body);
+    return;
+  }
+  if(kind==="profit"){
+    const c=paymentsInRange("student_payment").reduce((s,p)=>s+Number(p.amount||0),0);
+    const t=paymentsInRange("teacher_payment").reduce((s,p)=>s+Number(p.amount||0),0);
+    openModal("ملخص الربح",`
+      <div class="list-item ok"><div class="item-title">تحصيل طلاب</div><div class="item-meta">${money(c)} ج</div></div>
+      <div class="list-item"><div class="item-title">صرف معلمين</div><div class="item-meta">${money(t)} ج</div></div>
+      <div class="list-item ${c-t>=0?"ok":"due"}"><div class="item-title">الربح</div><div class="item-meta"><b>${money(c-t)} ج</b></div></div>
+      <p style="font-size:12px;color:var(--muted);margin-top:8px">الفترة: ${sanitize(from)} → ${sanitize(to)}</p>`);
+  }
+}
+function exportExcel(){
+  if(!reportRange.from) defaultReportRange();
+  const {from,to}=getReportRange();
+  const stu=paymentsInRange("student_payment").map(p=>({النوع:"تحصيل",الاسم:p.studentName||"",المبلغ:p.amount,التاريخ:payDateStr(p),ملاحظة:p.note||""}));
+  const tea=paymentsInRange("teacher_payment").map(p=>({النوع:"صرف معلم",الاسم:p.teacherName||"",المجموعة:p.groupName||"",المبلغ:p.amount,التاريخ:payDateStr(p),ملاحظة:p.note||""}));
+  const sess=sessionsInRange().map(s=>{
+    const g=cache.groups.find(x=>x.id===s.groupId);
+    const t=cache.teachers.find(x=>x.id===s.teacherId);
+    return {التاريخ:s.date,المجموعة:g?.name||"",المعلم:t?.name||"",حضور:(s.attendance||[]).filter(a=>a.status==="present").length};
+  });
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(stu),"تحصيل");
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(tea),"معلمين");
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(sess),"جلسات");
+  XLSX.writeFile(wb,"center-report-"+from+"_to_"+to+".xlsx");
+  toast("تم التصدير","ok");
+}
+const WIPE_MAP={
+  sessions:{cols:["center_sessions"],label:"كل الجلسات"},
+  students:{cols:["center_students"],label:"كل الطلاب"},
+  teachers:{cols:["center_teachers"],label:"كل المعلمين"},
+  payments:{cols:["center_payments"],label:"كل المدفوعات"},
+  groups:{cols:["center_groups"],label:"كل المجموعات"},
+  all:{cols:["center_sessions","center_students","center_teachers","center_payments","center_groups","center_schedule"],label:"جميع البيانات"}
+};
+function confirmWipe(kind){
+  if(!requirePerm("wipeAll")) return;
+  const conf=WIPE_MAP[kind];
+  if(!conf) return;
+  openModal("تأكيد المسح",`
+    <p style="font-size:14px;line-height:1.7;margin-bottom:12px">سيتم حذف: <b style="color:var(--danger)">${conf.label}</b> من Firebase نهائياً.</p>
+    <div class="form-group"><label>اكتب كلمة <b>مسح</b> للتأكيد</label><input id="wipeWord" placeholder="مسح" autocomplete="off"></div>
+  `,`<button class="btn btn-outline btn-sm" onclick="closeModal()">إلغاء</button>
+    <button class="btn btn-danger btn-sm" onclick="runWipe('${kind}')">تنفيذ المسح</button>`);
+}
+async function deleteCollectionDocs(colName){
+  const snap=await db.collection(colName).get();
+  const docs=snap.docs,CHUNK=400;
+  for(let i=0;i<docs.length;i+=CHUNK){
+    const batch=db.batch();
+    docs.slice(i,i+CHUNK).forEach(d=>batch.delete(d.ref));
+    await batch.commit();
+  }
+  return docs.length;
+}
+async function runWipe(kind){
+  if(!requirePerm("wipeAll")) return;
+  const conf=WIPE_MAP[kind];
+  if(!conf) return;
+  if(($("wipeWord")?.value||"").trim()!=="مسح"){toast("اكتب كلمة مسح بالضبط","err");return}
+  try{
+    showLoading("جاري المسح...");
+    let total=0;
+    for(const col of conf.cols){try{total+=await deleteCollectionDocs(col)}catch(e){console.warn(col,e)}}
+    if(kind==="sessions"||kind==="all") cache.sessions=[];
+    if(kind==="students"||kind==="all") cache.students=[];
+    if(kind==="teachers"||kind==="all") cache.teachers=[];
+    if(kind==="payments"||kind==="all") cache.payments=[];
+    if(kind==="groups"||kind==="all") cache.groups=[];
+    if(kind==="all") cache.schedule=[];
+    closeModal();hideLoading();toast("تم المسح: "+total+" سجل","ok");goPage("home");
+  }catch(e){hideLoading();toast("تعذر المسح: "+(e.message||e),"err")}
+}
+</script>
+</body>
+</html>
