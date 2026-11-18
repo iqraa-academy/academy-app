@@ -146,6 +146,7 @@ button,input,select,textarea{font-family:inherit;font-size:14px}
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
+      <button type="button" class="exit-btn" id="privacyBtn" style="background:rgba(255,255,255,.2);font-size:16px;" onclick="toggleHideAmounts()" title="إخفاء المبالغ">👁️</button>
       <button type="button" class="exit-btn" style="background:rgba(255,255,255,.2);position:relative;" onclick="showNotifPanel()" title="إشعارات">
         🔔<span id="notifBadge" style="display:none;position:absolute;top:-4px;left:-4px;background:#d9534f;color:#fff;font-size:10px;min-width:16px;height:16px;border-radius:8px;align-items:center;justify-content:center;font-weight:bold;"></span>
       </button>
@@ -334,6 +335,42 @@ function todayISO(){const d=new Date();return d.getFullYear()+"-"+String(d.getMo
 function monthKey(d){return (d||todayISO()).slice(0,7)}
 function fmtDate(v){if(!v)return"—";if(typeof v==="number")return new Date(v).toLocaleDateString("ar-EG");return String(v)}
 function money(n){return Number(n||0).toLocaleString("en-US")}
+/** إخفاء المبالغ للخصوصية — نجوم بدل الأرقام */
+let hideAmounts=false;
+function moneyPriv(n){
+  if(hideAmounts) return "★★★★";
+  return money(n);
+}
+function toggleHideAmounts(){
+  hideAmounts=!hideAmounts;
+  try{localStorage.setItem("center_hideAmounts",hideAmounts?"1":"0")}catch(e){}
+  const btn=$("privacyBtn");
+  if(btn){btn.textContent=hideAmounts?"👁️‍🗨️":"👁️";btn.title=hideAmounts?"إظهار المبالغ":"إخفاء المبالغ"}
+  renderPage();
+  toast(hideAmounts?"تم إخفاء المبالغ":"تم إظهار المبالغ","ok");
+}
+try{if(localStorage.getItem("center_hideAmounts")==="1") hideAmounts=true}catch(e){}
+/** تحويل 20:00 → 08:00 م */
+function formatTimeAr(t){
+  if(!t) return "—";
+  const m=String(t).trim().match(/^(\d{1,2}):(\d{2})/);
+  if(!m) return String(t);
+  let h=Number(m[1]);
+  const min=m[2];
+  const isPM=h>=12;
+  if(h===0) h=12;
+  else if(h>12) h-=12;
+  return String(h).padStart(2,"0")+":"+min+(isPM?" م":" ص");
+}
+function studentsForTeacher(teacherId){
+  return (cache.students||[]).filter(s=>{
+    if(isPaused(s)) return false;
+    return (s.enrollments||[]).some(e=>{
+      const g=(cache.groups||[]).find(x=>x.id===e.groupId);
+      return g && (g.teacherIds||[]).includes(teacherId);
+    });
+  });
+}
 function openDrawer(){$("drawer").classList.add("open");$("drawerOverlay").classList.add("show")}
 function closeDrawer(){$("drawer").classList.remove("open");$("drawerOverlay").classList.remove("show")}
 function openModal(title,body,footer){$("modalTitle").textContent=title;$("modalBody").innerHTML=body;$("modalFooter").innerHTML=footer||`<button class="btn btn-outline btn-sm" onclick="closeModal()">إغلاق</button>`;$("modalOverlay").classList.add("show")}
@@ -805,6 +842,8 @@ function renderPage(){
   const top=$("topTitle"); if(top) top.textContent=titles[currentPage]||(centerMeta.name||"السنتر");
   updateNotifBadge();
   { const bb=$("bottomBack"); if(bb) bb.classList.toggle("show",currentPage!=="home"); }
+  const pBtn=$("privacyBtn");
+  if(pBtn){pBtn.textContent=hideAmounts?"👁️‍🗨️":"👁️";pBtn.title=hideAmounts?"إظهار المبالغ":"إخفاء المبالغ"}
   setupPullRefresh();
   buildDrawer();
   bindCollectSearch();
@@ -938,11 +977,11 @@ function renderHome(){
       <div class="stat-label">مجموعات — اضغط</div>
     </div>
     <div class="stat-card warn ${homePanel==="collect"?"active-filter":""}" style="cursor:pointer" onclick="setHomePanel('collect')">
-      <div class="stat-num">${money(monthTotal)}</div>
+      <div class="stat-num">${moneyPriv(monthTotal)}</div>
       <div class="stat-label">متحصَّل هذا الشهر — اضغط</div>
     </div>
     <div class="stat-card ${homePanel==="expected"?"active-filter":""}" style="cursor:pointer" onclick="setHomePanel('expected')">
-      <div class="stat-num">${money(expectedMonth)}</div>
+      <div class="stat-num">${moneyPriv(expectedMonth)}</div>
       <div class="stat-label">متوقع هذا الشهر — اضغط</div>
     </div>
   </div>
@@ -972,13 +1011,38 @@ function renderHome(){
     }).join("")||`<div class="empty-state"><p>لا طلاب نشطين</p></div>`;
     detail=`<div id="homeDetailPanel"><div class="card-title" style="margin-bottom:10px">الطلاب النشطون (${activeStu.length})</div>${detail}</div>`;
   }else if(homePanel==="teachers"){
-    detail=activeTea.map(t=>`<div class="list-item ok"><div>
-      <div class="item-title">${sanitize(t.name)}</div>
-      <div class="item-meta">${sanitize(t.phone||"—")}</div>
-    </div>
-    ${can("addTeacher")?`<button class="btn btn-outline btn-sm" onclick="openTeacherForm('${t.id}')">تعديل</button>`:""}
-    </div>`).join("")||`<div class="empty-state"><p>لا معلمون</p></div>`;
-    detail=`<div id="homeDetailPanel"><div class="card-title" style="margin-bottom:10px">المعلمون (${activeTea.length})</div>${detail}</div>`;
+    const expandId=pageQ.homeTeacherExpand||"";
+    detail=activeTea.map(t=>{
+      const sts=studentsForTeacher(t.id);
+      const open=expandId===t.id;
+      let stuList="";
+      if(open){
+        stuList=sts.map(s=>{
+          const ens=(s.enrollments||[]).map(e=>{
+            const g=cache.groups.find(x=>x.id===e.groupId);
+            return sanitize(g?.name||"");
+          }).filter(Boolean).join("، ")||"—";
+          return '<div class="sess-day" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">'+
+            '<span>'+sanitize(s.name)+' · '+sanitize(s.phone||"—")+' · '+ens+'</span>'+
+            waBtn(s.phone)+
+          '</div>';
+        }).join("") || '<p style="font-size:12px;color:var(--muted)">لا طلاب مربوطين</p>';
+      }
+      return '<div class="list-item foldable ok '+(open?"open":"")+'" onclick="pageQ.homeTeacherExpand=pageQ.homeTeacherExpand===\''+t.id+'\'?\'\':\''+t.id+'\';renderPage()">'+
+      '<div style="flex:1;min-width:140px">'+
+        '<div class="item-title">'+sanitize(t.name)+' <span class="chip">'+sts.length+' طالب</span> <span class="expand-hint">— اضغط للطلاب</span></div>'+
+        '<div class="item-meta">'+sanitize(t.phone||"—")+'</div>'+
+      '</div>'+
+      '<div class="item-actions" onclick="event.stopPropagation()">'+
+        waBtn(t.phone)+
+        (can("addTeacher")?'<button class="btn btn-outline btn-sm" onclick="openTeacherForm(\''+t.id+'\')">تعديل</button>':"")+
+      '</div>'+
+      '<div class="fold-body" onclick="event.stopPropagation()">'+
+        '<div style="font-size:12px;font-weight:bold;margin-bottom:6px;color:var(--primary)">الطلاب المربوطون ('+sts.length+')</div>'+
+        stuList+
+      '</div></div>';
+    }).join("")||'<div class="empty-state"><p>لا معلمون</p></div>';
+    detail='<div id="homeDetailPanel"><div class="card-title" style="margin-bottom:10px">المعلمون ('+activeTea.length+')</div>'+detail+'</div>';
   }else if(homePanel==="groups"){
     detail=groups.map(g=>{
       const te=cache.teachers.find(x=>(g.teacherIds||[]).includes(x.id));
@@ -1024,7 +1088,7 @@ function renderHome(){
       const isStu=p.type==="student_payment";
       return `<div class="list-item ${isStu?"ok":""}"><div>
         <div class="item-title">${isStu?"تحصيل: "+sanitize(p.studentName||"طالب"):"صرف معلم: "+sanitize(p.teacherName||"")}${p.settlementLabel?` · ${sanitize(p.settlementLabel)}`:""}${p.groupName?` · ${sanitize(p.groupName)}`:""}</div>
-        <div class="item-meta">${money(p.amount)} ج · ${sanitize(p.payDate||fmtDate(p.at))}${p.note?" · "+sanitize(p.note):""}</div>
+        <div class="item-meta">${moneyPriv(p.amount)} ج · ${sanitize(p.payDate||fmtDate(p.at))}${p.note?" · "+sanitize(p.note):""}</div>
       </div>
       ${(isStu&&can("collectStudent"))||(!isStu&&can("payTeacher"))?`<button class="btn btn-outline btn-sm" onclick="editPayment('${p.id}')">تعديل</button>`:""}
       </div>`;
@@ -1035,7 +1099,7 @@ function renderHome(){
         <input id="cfQ" value="${sanitize(collectFilter.q||"")}" placeholder="اسم طالب / تسوية / ملاحظة" autocomplete="off"></div>
       ${duesFilterHTML("collect")}
       <div class="stats-grid" style="margin-bottom:12px">
-        <div class="stat-card success"><div class="stat-num">${money(total)}</div><div class="stat-label">إجمالي المفلتر</div></div>
+        <div class="stat-card success"><div class="stat-num">${moneyPriv(total)}</div><div class="stat-label">إجمالي المفلتر</div></div>
         <div class="stat-card"><div class="stat-num">${list.length}</div><div class="stat-label">عدد العمليات</div></div>
       </div>
       <div id="collectListBox">${rows}</div>
@@ -1059,7 +1123,7 @@ function renderHome(){
       return `<div class="list-item ${monthDue?"due":"ok"}">
         <div style="flex:1;min-width:140px">
           <div class="item-title">${sanitize(s.name)}</div>
-          <div class="item-meta"><b>${sanitize(label)}</b><br>متبقي للتحصيل: <b>${money(remain)} ج</b>${monthSett.some(x=>x.paid>0)?` · سُدد منها ${money(monthSett.reduce((a,x)=>a+x.paid,0))} ج`:""}</div>
+          <div class="item-meta"><b>${sanitize(label)}</b><br>متبقي للتحصيل: <b>${moneyPriv(remain)} ج</b>${monthSett.some(x=>x.paid>0)?` · سُدد منها ${moneyPriv(monthSett.reduce((a,x)=>a+x.paid,0))} ج`:""}</div>
         </div>
         <div class="item-actions">
           ${can("collectStudent")&&monthDue?`<button class="btn btn-success btn-sm" onclick="openStudentPay('${s.id}')">تسديد</button>`:""}
@@ -1072,11 +1136,11 @@ function renderHome(){
       teaExp=`<div class="card-title" style="margin:16px 0 10px">مستحقات معلمين مكتملة</div>`+
         teaDue.map(({te,sc})=>`<div class="list-item due"><div>
           <div class="item-title">${sanitize(te.name)}</div>
-          <div class="item-meta">${sc.fullPending} دورة · ${money(sc.dueAmount)} ج</div>
+          <div class="item-meta">${sc.fullPending} دورة · ${moneyPriv(sc.dueAmount)} ج</div>
         </div>
         <button class="btn btn-outline btn-sm" onclick="goPage('teacherSettle')">عرض</button></div>`).join("");
     }
-    detail=`<div id="homeDetailPanel"><div class="card-title" style="margin-bottom:10px">إجمالي متوقع الطلاب هذا الشهر: ${money(expectedMonth)} ج</div>${detail}${teaExp}</div>`;
+    detail=`<div id="homeDetailPanel"><div class="card-title" style="margin-bottom:10px">إجمالي متوقع الطلاب هذا الشهر: ${moneyPriv(expectedMonth)} ج</div>${detail}${teaExp}</div>`;
   }
 
   const logo=centerMeta.logoData?`<img src="${centerMeta.logoData}" alt="logo" style="height:40px;width:40px;border-radius:10px;object-fit:cover">`:"";
@@ -1203,7 +1267,7 @@ function renderStudentDues(){
         if(x.paid>0) btns+=`<button class="btn btn-outline btn-sm" onclick="editSettlementPay('${s.id}','${sanitize(x.key)}')">تعديل</button>`;
       }
       return `<div class="sess-day" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;${style}">
-        <span>${sanitize(x.label)} · ${money(x.amount)} · مدفوع ${money(x.paid)} · باقي ${money(x.remaining)} · استحقاق ${sanitize(x.dueDate)}${x.remaining<=0?" ✅":(x.isDue?" 🔴":"")}</span>
+        <span>${sanitize(x.label)} · ${moneyPriv(x.amount)} · مدفوع ${moneyPriv(x.paid)} · باقي ${moneyPriv(x.remaining)} · استحقاق ${sanitize(x.dueDate)}${x.remaining<=0?" ✅":(x.isDue?" 🔴":"")}</span>
         <span>${btns}</span></div>`;
     }).join("")||`<p style="font-size:12px;color:var(--muted)">لا تسويات</p>`;
     const loose=active?[]:studentPaymentsList(s).filter(p=>!p.settlementKey&&!p.settlementYm);
@@ -1211,7 +1275,7 @@ function renderStudentDues(){
     return `<div class="list-item foldable ${hasOpen?"due":"ok"}" onclick="this.classList.toggle('open')">
       <div style="flex:1;min-width:160px">
         <div class="item-title">${sanitize(s.name)} <span class="expand-hint">— كل التسويات</span></div>
-        <div class="item-meta">مطلوب ${money(required)} · مدفوع ${money(paid)} · <b style="color:${unpaid>0?"var(--danger)":"var(--success)"}">${unpaid>0?"عليه "+money(unpaid)+" ج":"خالص"}</b>
+        <div class="item-meta">مطلوب ${moneyPriv(required)} · مدفوع ${moneyPriv(paid)} · <b style="color:${unpaid>0?"var(--danger)":"var(--success)"}">${unpaid>0?"عليه "+moneyPriv(unpaid)+" ج":"خالص"}</b>
         ${lastPay?`<br>آخر استلام: ${sanitize(lastPay.payDate||fmtDate(lastPay.at))}`:""}</div>
       </div>
       <div class="item-actions" onclick="event.stopPropagation()">${waBtn(s.phone)}</div>
@@ -1314,7 +1378,7 @@ function renderTeacherSettle(){
       block+=`<div style="margin:10px 0 6px;font-size:13px;font-weight:bold;color:var(--primary-dark)">📚 ${sanitize(g.name)}</div>`;
       cycles.forEach(cy=>{
         const cls=(cy.full&&cy.remaining>0)?"due":((cy.remaining<=0&&cy.paid>0)?"ok":"");
-        const daysHtml=cy.sessionDetails.map(d=>`<div class="sess-day">${d.n}) ${sanitize(d.date)}${d.time?" · "+sanitize(d.time):""} · حاضر ${d.present}${d.absent?` · غائب ${d.absent}`:""} · ${money(d.amount)} ج</div>`).join("");
+        const daysHtml=cy.sessionDetails.map(d=>`<div class="sess-day">${d.n}) ${sanitize(d.date)}${d.time?" · "+sanitize(formatTimeAr(d.time)):""} · حاضر ${d.present}${d.absent?` · غائب ${d.absent}`:""} · ${moneyPriv(d.amount)} ج</div>`).join("");
         const pays=(cache.payments||[]).filter(p=>p.type==="teacher_payment"&&p.teacherId===t.id&&p.groupId===g.id&&Number(p.cycleIndex)===cy.cycleIndex);
         const payHtml=pays.map(p=>`<div class="sess-day">دفع ${money(p.amount)} · ${sanitize(p.payDate||fmtDate(p.at))}${p.note?" · "+sanitize(p.note):""}
           ${can("payTeacher")?` <button class="btn btn-outline btn-sm" onclick="editPayment('${p.id}')">تعديل</button>`:""}
@@ -1325,8 +1389,8 @@ function renderTeacherSettle(){
               ${cy.full?`<span class="chip ${cy.remaining>0?"red":""}">${cy.sessions}/${cy.cycleSize}</span>`:`<span class="chip">${cy.sessions}/${cy.cycleSize}</span>`}
               ${cy.closed?`<span class="chip">منتهية</span>`:""}
               <span class="expand-hint">— اضغط للتفاصيل</span>
-              <div class="item-meta">المبلغ: ${money(cy.amount)} ج · مدفوع: ${money(cy.paid)} ج
-                ${cy.remaining>0?` · <b style="color:var(--danger)">باقي ${money(cy.remaining)}</b>`:" · خالص"}
+              <div class="item-meta">المبلغ: ${moneyPriv(cy.amount)} ج · مدفوع: ${moneyPriv(cy.paid)} ج
+                ${cy.remaining>0?` · <b style="color:var(--danger)">باقي ${moneyPriv(cy.remaining)}</b>`:" · خالص"}
                 ${cy.lastPayDate?`<br>تاريخ التسديد: <b>${sanitize(cy.lastPayDate)}</b>`:""}</div></div>
             <div class="item-actions" onclick="event.stopPropagation()">
               ${can("payTeacher")&&cy.amount>0&&cy.remaining>0?`<button class="btn btn-success btn-sm" onclick="openTeacherPay('${t.id}','${g.id}',${cy.cycleIndex},${cy.remaining})">تسديد</button>`:""}
@@ -1675,7 +1739,14 @@ function openStudentForm(id){
       <div class="form-group"><label>موبايل</label><input id="sPhone" value="${sanitize(s?.phone||"")}"></div>
       <div class="form-group" style="grid-column:1/-1"><label>ولي الأمر</label><input id="sParent" value="${sanitize(s?.parentName||"")}"></div>
       <div class="form-group" style="grid-column:1/-1"><label>المجموعة (الربط)</label>
-        <select id="sGroup"><option value="">— بدون ربط الآن —</option>${gOpts}</select>
+        <div style="border:1.5px solid #c5d4de;border-radius:12px;overflow:hidden;background:#fff">
+          <input id="sGroupQ" placeholder="🔍 ابحث باسم المجموعة أو المعلم..." oninput="filterGroupSelect('sGroup','sGroupQ')" autocomplete="off"
+            style="width:100%;padding:12px 14px;border:none;border-bottom:1px solid var(--border);border-radius:0;min-height:44px;outline:none">
+          <select id="sGroup" size="5" style="width:100%;border:none;border-radius:0;padding:6px;min-height:120px;max-height:180px">
+            <option value="">— بدون ربط الآن —</option>${gOpts}
+          </select>
+        </div>
+        <p style="font-size:11px;color:var(--muted);margin-top:4px">اكتب للتصفية ثم اختر من القائمة</p>
       </div>
       <div class="form-group"><label>طريقة الحساب</label>
         <select id="sBillType" onchange="onSBillType()">
@@ -1732,6 +1803,20 @@ function onSBillType(){
   $("sMonthBox")?.classList.toggle("hide",!isM);
   $("sStartBox")?.classList.toggle("hide",!isM);
   if(!isM) calcStudentSessionRate();
+}
+/** فلترة خيارات select المجموعة بالبحث */
+function filterGroupSelect(selId,qId){
+  const sel=$(selId), q=($(qId)?.value||"").trim().toLowerCase();
+  if(!sel) return;
+  const opts=[...sel.options];
+  let firstVisible="";
+  opts.forEach((opt,i)=>{
+    if(i===0 && !opt.value){opt.hidden=false;return}
+    const show=!q || (opt.textContent||"").toLowerCase().includes(q);
+    opt.hidden=!show;
+    if(show && !firstVisible && opt.value) firstVisible=opt.value;
+  });
+  if(q && firstVisible && !sel.value) sel.value=firstVisible;
 }
 function calcStudentSessionRate(){
   const total=Number($("sPackTotal")?.value)||0;
@@ -1921,7 +2006,16 @@ function openEnroll(studentId){
     return `<option value="${g.id}">${sanitize(g.name)} — ${sanitize(t?.name||"")}</option>`;
   }).filter(Boolean).join("");
   openModal("ربط طالب بمجموعة — "+(s?.name||""),`
-    <div class="form-group"><label>المجموعة *</label><select id="enGroup"><option value="">—</option>${gOpts}</select></div>
+    <div class="form-group"><label>المجموعة *</label>
+      <div style="border:1.5px solid #c5d4de;border-radius:12px;overflow:hidden;background:#fff">
+        <input id="enGroupQ" placeholder="🔍 ابحث باسم المجموعة أو المعلم..." oninput="filterGroupSelect('enGroup','enGroupQ')" autocomplete="off"
+          style="width:100%;padding:12px 14px;border:none;border-bottom:1px solid var(--border);border-radius:0;min-height:44px;outline:none">
+        <select id="enGroup" size="5" style="width:100%;border:none;border-radius:0;padding:6px;min-height:120px;max-height:180px">
+          <option value="">— اختر —</option>${gOpts}
+        </select>
+      </div>
+      <p style="font-size:11px;color:var(--muted);margin-top:4px">اكتب للتصفية ثم اختر من القائمة</p>
+    </div>
     <div class="form-group"><label>حساب الطالب</label>
       <select id="enType" onchange="onEnType()">
         <option value="monthly" selected>بالشهر</option>
@@ -2085,7 +2179,7 @@ function renderSessions(){
     const pr=(s.attendance||[]).filter(a=>a.status==="present").length;
     const ab=(s.attendance||[]).filter(a=>a.status==="absent").length;
     return `<div class="list-item"><div>
-      <div class="item-title">${sanitize(s.date)}${s.time?" · "+sanitize(s.time):""} — ${sanitize(g?.name||"")}</div>
+      <div class="item-title">${sanitize(s.date)}${s.time?" · "+sanitize(formatTimeAr(s.time)):""} — ${sanitize(g?.name||"")}</div>
       <div class="item-meta">المعلم: ${sanitize(te?.name||"")} · حاضر ${pr} · غائب ${ab}</div>
     </div></div>`;
   }).join("")||`<div class="empty-state"><p>لا جلسات</p></div>`;
@@ -2222,8 +2316,50 @@ function setScheduleDay(wd){
 function formatTimeRange(s){
   const a=s.timeFrom||s.time||"";
   const b=s.timeTo||"";
-  if(a&&b) return a+" — "+b;
-  return a||"—";
+  if(a&&b) return formatTimeAr(a)+" — "+formatTimeAr(b);
+  return a?formatTimeAr(a):"—";
+}
+function scheduleReminderText(s){
+  const g=cache.groups.find(x=>x.id===s.groupId);
+  const t=cache.teachers.find(x=>x.id===s.teacherId);
+  const day=weekDayName(s.weekDay!=null?s.weekDay:(Array.isArray(s.weekDays)&&s.weekDays[0]));
+  const timeStr=formatTimeRange(s);
+  const center=centerMeta.name||"السنتر";
+  return `السلام عليكم 👋
+تذكير بموعد الجلسة من *${center}*
+
+📚 المجموعة: ${g?.name||"—"}
+👨‍🏫 المعلم: ${t?.name||"—"}
+📅 اليوم: ${day||"—"}
+⏰ الوقت: ${timeStr}
+
+نتمنى لكم جلسة موفقة 🌟`;
+}
+function openScheduleReminder(schedId){
+  const s=(cache.schedule||[]).find(x=>x.id===schedId);
+  if(!s){toast("الموعد غير موجود","err");return}
+  const g=cache.groups.find(x=>x.id===s.groupId);
+  const t=cache.teachers.find(x=>x.id===s.teacherId);
+  const sts=cache.students.filter(st=>(st.enrollments||[]).some(e=>e.groupId===s.groupId)&&!isPaused(st));
+  const text=scheduleReminderText(s);
+  const rows=[];
+  if(t&&t.phone){
+    const href=waLink(t.phone);
+    if(href) rows.push(`<div class="list-item"><div><div class="item-title">المعلم: ${sanitize(t.name)}</div><div class="item-meta">${sanitize(t.phone)}</div></div>
+      <a class="btn btn-success btn-sm" href="${href}?text=${encodeURIComponent(text)}" target="_blank" rel="noopener" style="text-decoration:none">💬 واتساب</a></div>`);
+  }
+  sts.forEach(st=>{
+    if(!st.phone) return;
+    const href=waLink(st.phone);
+    if(!href) return;
+    rows.push(`<div class="list-item"><div><div class="item-title">طالب: ${sanitize(st.name)}</div><div class="item-meta">${sanitize(st.phone)}</div></div>
+      <a class="btn btn-success btn-sm" href="${href}?text=${encodeURIComponent(text)}" target="_blank" rel="noopener" style="text-decoration:none">💬 واتساب</a></div>`);
+  });
+  if(!rows.length){toast("لا أرقام واتساب متاحة للمعلم أو الطلاب","err");return}
+  openModal("تذكير واتساب — "+(g?.name||"موعد"),`
+    <p style="font-size:12px;color:var(--muted);margin-bottom:10px">اضغط واتساب لإرسال تذكير بالموعد والتاريخ والوقت</p>
+    ${rows.join("")}
+  `);
 }
 function renderSchedule(){
   if(scheduleDay==null) scheduleDay=todayWeekId();
@@ -2248,6 +2384,7 @@ function renderSchedule(){
         <div class="item-meta">المعلم: ${sanitize(t?.name||s.teacherName||"—")}<br>⏰ ${sanitize(formatTimeRange(s))}</div>
       </div>
       <div class="item-actions">
+        <button class="btn btn-success btn-sm" onclick="openScheduleReminder('${s.id}')">💬 تذكير</button>
         ${can("registerSession")?`<button class="btn btn-primary btn-sm" onclick="openSessionFromSched('${s.id}')">تسجيل جلسة</button>`:""}
         ${can("manageSchedule")?`<button class="btn btn-outline btn-sm" onclick="openSchedEdit('${s.id}')">تعديل الوقت</button>`:""}
         ${can("manageSchedule")||can("deleteData")?`<button class="btn btn-danger btn-sm" onclick="deleteSched('${s.id}')">حذف</button>`:""}
@@ -2559,15 +2696,15 @@ function renderReports(){
   </div>
   <div class="stats-grid">
     <div class="stat-card success" style="cursor:pointer" onclick="showReportDetails('collect')">
-      <div class="stat-num">${money(collected)}</div>
+      <div class="stat-num">${moneyPriv(collected)}</div>
       <div class="stat-label">المتحصَّل من الطلاب — اضغط للتفاصيل</div>
     </div>
     <div class="stat-card warn" style="cursor:pointer" onclick="showReportDetails('teachers')">
-      <div class="stat-num">${money(paidTeachers)}</div>
+      <div class="stat-num">${moneyPriv(paidTeachers)}</div>
       <div class="stat-label">مدفوع للمعلمين — اضغط للتفاصيل</div>
     </div>
     <div class="stat-card ${profit>=0?"success":"danger"}" style="cursor:pointer" onclick="showReportDetails('profit')">
-      <div class="stat-num">${money(profit)}</div>
+      <div class="stat-num">${moneyPriv(profit)}</div>
       <div class="stat-label">الربح (تحصيل − صرف)</div>
     </div>
     <div class="stat-card" style="cursor:pointer" onclick="showReportDetails('sessions')">
