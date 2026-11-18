@@ -253,7 +253,31 @@ const NAV=[
   {id:"reports",icon:"📈",label:"التقارير"},
   {id:"settings",icon:"⚙️",label:"إعدادات السنتر"}
 ];
-let centerMeta={name:"بوابة السنتر",logoData:""};
+let centerMeta={name:"بوابة السنتر",logoData:"",waNumbers:[]};
+/** أرقام واتساب الأكاديمية — النشط يُستخدم في التذكير والتواصل */
+function getWaNumbers(){
+  const list=Array.isArray(centerMeta.waNumbers)?centerMeta.waNumbers.slice():[];
+  return list.filter(x=>x&&(x.phone||"").trim());
+}
+function getActiveWaNumber(){
+  const list=getWaNumbers();
+  const act=list.find(x=>x.active);
+  return act||list[0]||null;
+}
+function waNumbersNormalize(list){
+  const out=(list||[]).map((x,i)=>({
+    id:x.id||("wa_"+Date.now()+"_"+i),
+    label:(x.label||"").trim()||("رقم "+(i+1)),
+    phone:digitsOnly(x.phone||""),
+    active:!!x.active
+  })).filter(x=>x.phone.length>=8);
+  if(out.length && !out.some(x=>x.active)) out[0].active=true;
+  if(out.filter(x=>x.active).length>1){
+    let seen=false;
+    out.forEach(x=>{if(x.active&&seen) x.active=false; else if(x.active) seen=true});
+  }
+  return out;
+}
 
 
 function waLink(phone){
@@ -492,6 +516,7 @@ async function loadCenterMeta(){
   try{
     const doc=await db.collection("center_meta").doc("config").get();
     if(doc.exists) centerMeta={...centerMeta,...(doc.data()||{})};
+    centerMeta.waNumbers=waNumbersNormalize(centerMeta.waNumbers||[]);
   }catch(e){console.warn(e)}
   applyCenterBranding();
 }
@@ -1301,6 +1326,18 @@ function renderStudentDues(){
 function renderSettings(){
   if(!(can("manageStaff")||profile?.role==="owner")) return `<div class="empty-state"><p>ليس لديك صلاحية</p></div>`;
   const logo=centerMeta.logoData?`<img src="${centerMeta.logoData}" style="max-height:80px;border-radius:12px;margin-top:8px">`:"";
+  const nums=getWaNumbers();
+  const waList=nums.map(n=>`
+    <div class="list-item ${n.active?"ok":""}" style="align-items:center">
+      <div style="flex:1;min-width:120px">
+        <div class="item-title">${sanitize(n.label)} ${n.active?'<span class="chip green">نشط — للإرسال</span>':""}</div>
+        <div class="item-meta">📱 ${sanitize(n.phone)}</div>
+      </div>
+      <div class="item-actions">
+        ${!n.active?`<button type="button" class="btn btn-success btn-sm" onclick="setActiveWaNumber('${sanitize(n.id)}')">تفعيل</button>`:""}
+        <button type="button" class="btn btn-danger btn-sm" onclick="removeWaNumber('${sanitize(n.id)}')">حذف</button>
+      </div>
+    </div>`).join("")||`<p style="font-size:12px;color:var(--muted);margin-bottom:10px">لا أرقام بعد — أضف رقم واتساب الأكاديمية أدناه</p>`;
   return `<div class="page-header"><h2>⚙️ إعدادات السنتر</h2></div>
   <div class="card">
     <div class="form-group"><label>اسم السنتر / التطبيق</label>
@@ -1311,7 +1348,21 @@ function renderSettings(){
     </div>
     <button class="btn btn-primary" onclick="saveCenterSettings()">حفظ الإعدادات</button>
   </div>
-  <p style="font-size:12px;color:var(--muted);margin-top:12px">يظهر الاسم واللوجو في شاشة الدخول والرئيسية بدل «لوحة السنتر».</p>`;
+  <div class="card">
+    <div class="card-title">💬 أرقام واتساب الأكاديمية (للإرسال والتواصل)</div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.7">
+      يمكنك إضافة أكثر من رقم. الرقم <b>النشط</b> يظهر في رسائل التذكير ويُفضَّل أن يكون الحساب المفتوح على جهاز الإرسال.
+    </p>
+    ${waList}
+    <div class="form-grid two" style="margin-top:12px">
+      <div class="form-group"><label>اسم / وصف الرقم</label>
+        <input id="waNewLabel" placeholder="مثال: رقم الإدارة"></div>
+      <div class="form-group"><label>رقم الموبايل</label>
+        <input id="waNewPhone" placeholder="01xxxxxxxxx" inputmode="tel"></div>
+    </div>
+    <button type="button" class="btn btn-success btn-sm" onclick="addWaNumber()">+ إضافة رقم واتساب</button>
+  </div>
+  <p style="font-size:12px;color:var(--muted);margin-top:12px">يظهر الاسم واللوجو في شاشة الدخول والرئيسية. أرقام الواتساب تُحفظ مع إعدادات السنتر.</p>`;
 }
 function onLogoPick(ev){
   const f=ev.target.files&&ev.target.files[0];
@@ -1325,6 +1376,54 @@ function onLogoPick(ev){
   };
   reader.readAsDataURL(f);
 }
+async function persistWaNumbers(){
+  centerMeta.waNumbers=waNumbersNormalize(centerMeta.waNumbers||[]);
+  await db.collection("center_meta").doc("config").set({
+    waNumbers:centerMeta.waNumbers,
+    updatedAt:Date.now()
+  },{merge:true});
+}
+async function addWaNumber(){
+  if(!requirePerm("manageStaff")) return;
+  const label=($("waNewLabel")?.value||"").trim();
+  const phone=digitsOnly($("waNewPhone")?.value||"");
+  if(phone.length<8){toast("أدخل رقم موبايل صالح (8 أرقام فأكثر)","err");return}
+  const list=getWaNumbers();
+  if(list.some(x=>x.phone===phone)){toast("هذا الرقم مضاف مسبقاً","err");return}
+  list.push({id:"wa_"+Date.now(),label:label||("رقم "+(list.length+1)),phone,active:list.length===0});
+  centerMeta.waNumbers=waNumbersNormalize(list);
+  try{
+    showLoading("حفظ...");
+    await persistWaNumbers();
+    hideLoading();
+    toast("تم إضافة الرقم","ok");
+    renderPage();
+  }catch(e){hideLoading();toast(e.message,"err")}
+}
+async function setActiveWaNumber(id){
+  if(!requirePerm("manageStaff")) return;
+  const list=getWaNumbers().map(x=>({...x,active:x.id===id}));
+  centerMeta.waNumbers=waNumbersNormalize(list);
+  try{
+    showLoading("حفظ...");
+    await persistWaNumbers();
+    hideLoading();
+    toast("تم تفعيل الرقم للإرسال","ok");
+    renderPage();
+  }catch(e){hideLoading();toast(e.message,"err")}
+}
+async function removeWaNumber(id){
+  if(!requirePerm("manageStaff")) return;
+  if(!confirm("حذف هذا الرقم؟")) return;
+  centerMeta.waNumbers=waNumbersNormalize(getWaNumbers().filter(x=>x.id!==id));
+  try{
+    showLoading("حفظ...");
+    await persistWaNumbers();
+    hideLoading();
+    toast("تم الحذف","ok");
+    renderPage();
+  }catch(e){hideLoading();toast(e.message,"err")}
+}
 async function saveCenterSettings(){
   if(!requirePerm("manageStaff")) return;
   const name=($("setName")?.value||"").trim()||"بوابة السنتر";
@@ -1334,8 +1433,10 @@ async function saveCenterSettings(){
     await db.collection("center_meta").doc("config").set({
       name:centerMeta.name,
       logoData:centerMeta.logoData||"",
+      waNumbers:waNumbersNormalize(centerMeta.waNumbers||[]),
       updatedAt:Date.now()
     },{merge:true});
+    centerMeta.waNumbers=waNumbersNormalize(centerMeta.waNumbers||[]);
     applyCenterBranding();
     hideLoading();
     toast("تم حفظ الإعدادات","ok");
@@ -1539,6 +1640,10 @@ function openGroupForm(id){
     <div class="form-group"><label>اسم المجموعة *</label><input id="gName" value="${sanitize(g?.name||"")}"></div>
     <div class="form-group"><label>المعلم *</label><select id="gTeacher"><option value="">—</option>${tOpts}</select></div>
     <div class="form-group"><label>المادة</label><input id="gSubject" value="${sanitize(g?.subject||"تحفيظ")}"></div>
+    <div class="form-group"><label>رابط جروب واتساب (اختياري)</label>
+      <input id="gWaGroup" value="${sanitize(g?.waGroupLink||"")}" placeholder="https://chat.whatsapp.com/....">
+      <p style="font-size:11px;color:var(--muted);margin-top:4px">لربط جروب المجموعة برسائل التذكير</p>
+    </div>
   `,`<button class="btn btn-outline btn-sm" onclick="closeModal()">إلغاء</button>
     <button class="btn btn-primary btn-sm" onclick="saveGroup('${id||""}')">حفظ</button>`);
 }
@@ -1548,7 +1653,11 @@ async function saveGroup(id){
   if(!name||!teacherId){toast("الاسم والمعلم مطلوبان","err");return}
   const t=cache.teachers.find(x=>x.id===teacherId);
   if(isPaused(t)){toast("المعلم موقوف","err");return}
-  const data={name,subject:$("gSubject").value.trim()||"تحفيظ",teacherIds:[teacherId],updatedAt:Date.now()};
+  let waGroupLink=($("gWaGroup")?.value||"").trim();
+  if(waGroupLink && !/^https?:\/\/(chat\.whatsapp\.com|wa\.me)\//i.test(waGroupLink)){
+    toast("رابط الجروب غير صالح","err");return;
+  }
+  const data={name,subject:$("gSubject").value.trim()||"تحفيظ",teacherIds:[teacherId],waGroupLink:waGroupLink||"",updatedAt:Date.now()};
   try{
     if(id) await db.collection("center_groups").doc(id).update(data);
     else await db.collection("center_groups").add({...data,createdAt:Date.now()});
@@ -1738,15 +1847,11 @@ function openStudentForm(id){
       <div class="form-group"><label>اسم الطالب *</label><input id="sName" value="${sanitize(s?.name||"")}"></div>
       <div class="form-group"><label>موبايل</label><input id="sPhone" value="${sanitize(s?.phone||"")}"></div>
       <div class="form-group" style="grid-column:1/-1"><label>ولي الأمر</label><input id="sParent" value="${sanitize(s?.parentName||"")}"></div>
+      <div class="form-group" style="grid-column:1/-1"><label>بحث مجموعة / معلم</label>
+        <input id="sGroupQ" placeholder="اكتب للبحث السريع عن المجموعة..." oninput="filterGroupSelect('sGroup','sGroupQ')" autocomplete="off">
+      </div>
       <div class="form-group" style="grid-column:1/-1"><label>المجموعة (الربط)</label>
-        <div style="border:1.5px solid #c5d4de;border-radius:12px;overflow:hidden;background:#fff">
-          <input id="sGroupQ" placeholder="🔍 ابحث باسم المجموعة أو المعلم..." oninput="filterGroupSelect('sGroup','sGroupQ')" autocomplete="off"
-            style="width:100%;padding:12px 14px;border:none;border-bottom:1px solid var(--border);border-radius:0;min-height:44px;outline:none">
-          <select id="sGroup" size="5" style="width:100%;border:none;border-radius:0;padding:6px;min-height:120px;max-height:180px">
-            <option value="">— بدون ربط الآن —</option>${gOpts}
-          </select>
-        </div>
-        <p style="font-size:11px;color:var(--muted);margin-top:4px">اكتب للتصفية ثم اختر من القائمة</p>
+        <select id="sGroup"><option value="">— بدون ربط الآن —</option>${gOpts}</select>
       </div>
       <div class="form-group"><label>طريقة الحساب</label>
         <select id="sBillType" onchange="onSBillType()">
@@ -2006,16 +2111,9 @@ function openEnroll(studentId){
     return `<option value="${g.id}">${sanitize(g.name)} — ${sanitize(t?.name||"")}</option>`;
   }).filter(Boolean).join("");
   openModal("ربط طالب بمجموعة — "+(s?.name||""),`
-    <div class="form-group"><label>المجموعة *</label>
-      <div style="border:1.5px solid #c5d4de;border-radius:12px;overflow:hidden;background:#fff">
-        <input id="enGroupQ" placeholder="🔍 ابحث باسم المجموعة أو المعلم..." oninput="filterGroupSelect('enGroup','enGroupQ')" autocomplete="off"
-          style="width:100%;padding:12px 14px;border:none;border-bottom:1px solid var(--border);border-radius:0;min-height:44px;outline:none">
-        <select id="enGroup" size="5" style="width:100%;border:none;border-radius:0;padding:6px;min-height:120px;max-height:180px">
-          <option value="">— اختر —</option>${gOpts}
-        </select>
-      </div>
-      <p style="font-size:11px;color:var(--muted);margin-top:4px">اكتب للتصفية ثم اختر من القائمة</p>
-    </div>
+    <div class="form-group"><label>بحث مجموعة / معلم</label>
+      <input id="enGroupQ" placeholder="اكتب للبحث السريع..." oninput="filterGroupSelect('enGroup','enGroupQ')" autocomplete="off"></div>
+    <div class="form-group"><label>المجموعة *</label><select id="enGroup"><option value="">—</option>${gOpts}</select></div>
     <div class="form-group"><label>حساب الطالب</label>
       <select id="enType" onchange="onEnType()">
         <option value="monthly" selected>بالشهر</option>
@@ -2325,15 +2423,50 @@ function scheduleReminderText(s){
   const day=weekDayName(s.weekDay!=null?s.weekDay:(Array.isArray(s.weekDays)&&s.weekDays[0]));
   const timeStr=formatTimeRange(s);
   const center=centerMeta.name||"السنتر";
+  const active=getActiveWaNumber();
+  const fromLine=active?`\n📞 واتساب الأكاديمية (${active.label}): ${active.phone}`:"";
   return `السلام عليكم 👋
 تذكير بموعد الجلسة من *${center}*
 
 📚 المجموعة: ${g?.name||"—"}
 👨‍🏫 المعلم: ${t?.name||"—"}
 📅 اليوم: ${day||"—"}
-⏰ الوقت: ${timeStr}
+⏰ الوقت: ${timeStr}${fromLine}
 
 نتمنى لكم جلسة موفقة 🌟`;
+}
+function copyTextToClipboard(text){
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    return navigator.clipboard.writeText(text).then(()=>true).catch(()=>false);
+  }
+  try{
+    const ta=document.createElement("textarea");
+    ta.value=text;ta.style.position="fixed";ta.style.left="-9999px";
+    document.body.appendChild(ta);ta.select();
+    const ok=document.execCommand("copy");
+    document.body.removeChild(ta);
+    return Promise.resolve(!!ok);
+  }catch(e){return Promise.resolve(false)}
+}
+async function copyReminderText(schedId){
+  const s=(cache.schedule||[]).find(x=>x.id===schedId);
+  if(!s) return;
+  const ok=await copyTextToClipboard(scheduleReminderText(s));
+  toast(ok?"تم نسخ نص التذكير":"تعذر النسخ",ok?"ok":"err");
+}
+async function openGroupWaReminder(schedId){
+  const s=(cache.schedule||[]).find(x=>x.id===schedId);
+  if(!s) return;
+  const g=cache.groups.find(x=>x.id===s.groupId);
+  const text=scheduleReminderText(s);
+  await copyTextToClipboard(text);
+  if(g&&g.waGroupLink){
+    toast("تم نسخ الرسالة — افتح الجروب والصقها","ok");
+    setTimeout(()=>window.open(g.waGroupLink,"_blank","noopener"),300);
+  }else{
+    toast("اختر الجروب أو الجهة من واتساب","ok");
+    window.open("https://wa.me/?text="+encodeURIComponent(text),"_blank","noopener");
+  }
 }
 function openScheduleReminder(schedId){
   const s=(cache.schedule||[]).find(x=>x.id===schedId);
@@ -2342,6 +2475,8 @@ function openScheduleReminder(schedId){
   const t=cache.teachers.find(x=>x.id===s.teacherId);
   const sts=cache.students.filter(st=>(st.enrollments||[]).some(e=>e.groupId===s.groupId)&&!isPaused(st));
   const text=scheduleReminderText(s);
+  const active=getActiveWaNumber();
+  const shareHref="https://wa.me/?text="+encodeURIComponent(text);
   const rows=[];
   if(t&&t.phone){
     const href=waLink(t.phone);
@@ -2355,10 +2490,26 @@ function openScheduleReminder(schedId){
     rows.push(`<div class="list-item"><div><div class="item-title">طالب: ${sanitize(st.name)}</div><div class="item-meta">${sanitize(st.phone)}</div></div>
       <a class="btn btn-success btn-sm" href="${href}?text=${encodeURIComponent(text)}" target="_blank" rel="noopener" style="text-decoration:none">💬 واتساب</a></div>`);
   });
-  if(!rows.length){toast("لا أرقام واتساب متاحة للمعلم أو الطلاب","err");return}
+  const hasGroupLink=!!(g&&g.waGroupLink);
   openModal("تذكير واتساب — "+(g?.name||"موعد"),`
-    <p style="font-size:12px;color:var(--muted);margin-bottom:10px">اضغط واتساب لإرسال تذكير بالموعد والتاريخ والوقت</p>
-    ${rows.join("")}
+    <div class="card" style="margin-bottom:12px;background:var(--primary-light);border-color:var(--primary)">
+      <div class="card-title">رقم الإرسال (الأكاديمية)</div>
+      <p style="font-size:13px;margin-bottom:8px">
+        ${active
+          ?`النشط: <b>${sanitize(active.label)}</b> — ${sanitize(active.phone)}`
+          :`<span style="color:var(--danger)">لم يُضبط رقم واتساب للأكاديمية بعد</span> — من الإعدادات أضف رقماً وفعّله`}
+      </p>
+      <p style="font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:10px">
+        الرسالة تُرسل من حساب واتساب المفتوح على جهازك. يُفضَّل تسجيل الدخول بنفس الرقم النشط أعلاه.
+      </p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">
+        <button type="button" class="btn btn-success btn-sm" onclick="openGroupWaReminder('${schedId}')">${hasGroupLink?"💬 فتح جروب المجموعة":"💬 اختيار جروب / جهة"}</button>
+        <a class="btn btn-primary btn-sm" href="${shareHref}" target="_blank" rel="noopener" style="text-decoration:none;width:auto">مشاركة نص جاهز</a>
+        <button type="button" class="btn btn-outline btn-sm" onclick="copyReminderText('${schedId}')">📋 نسخ النص</button>
+      </div>
+    </div>
+    <div class="card-title" style="margin-bottom:8px">إرسال فردي (اختياري)</div>
+    ${rows.length?rows.join(""):`<p style="font-size:12px;color:var(--muted)">لا أرقام للمعلم أو الطلاب</p>`}
   `);
 }
 function renderSchedule(){
